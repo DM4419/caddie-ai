@@ -6,8 +6,8 @@ scoring and sources. Runs locally; nothing is ever auto-submitted.
 
 - [1. Install](#1-install) · [2. Credentials (.env)](#2-credentials-env)
 - [3. First-run setup, in order](#3-first-run-setup-in-order) — the important part
-- [4. Daily use](#4-daily-use) · [5. Optional board keys](#5-optional-board-api-keys)
-- [6. Reset a handed-over copy](#6-reset-a-handed-over-copy) · [7. Troubleshooting](#7-troubleshooting)
+- [4. Daily use](#4-daily-use) · [5. Reviewing learnings & guardrails](#5-reviewing-learnings--guardrails)
+- [6. Optional board keys](#6-optional-board-api-keys) · [7. Reset a handed-over copy](#7-reset-a-handed-over-copy) · [8. Troubleshooting](#8-troubleshooting)
 
 ---
 
@@ -161,14 +161,57 @@ Every edit you accept teaches Caddie AI your style; the next drafts need fewer c
 
 ---
 
-## 5. Optional board API keys
+## 5. Reviewing learnings & guardrails
+
+Caddie AI both **learns from your edits** and applies **fixed guardrails** — both are inspectable.
+
+### What it has learned (and how to prune it)
+Everything it learns lives in plain files under `data/` — yours to read, edit, or delete:
+
+| File | What it holds | How it's used |
+|---|---|---|
+| `style.md` | raw, append-only log of every edit you accepted (*AI suggested → changed to → your reason*) | the source of truth |
+| `style-rules.md` | a compact, de-duplicated do/don't rule set distilled from `style.md` | followed strictly on every draft |
+| `style-examples.md` | accepted edits grouped per application (balanced sampling) | voice examples for drafting |
+| `skips.md` | why you passed on roles (negative anchors) | down-ranks similar roles when scoring |
+| `strengths.md` | things you're strong at (positive anchors) | treated as **met**; lifts the score |
+
+- **Review & prune in the UI:** **Settings → Learned preferences** lists every captured edit as a
+  card — **✕** forgets one, **Clear all** wipes them. Pruning rewrites `style.md`.
+- **Export for an offline read:** in a role's review pane, **⬇ Download → Learnings summary**
+  (Docx / PDF / MD) gives you the full set.
+- **Re-distil:** the rule set is rebuilt from `style.md` **automatically right before each draft,
+  but only when you've changed something** (no stale schedule) — so drafts always reflect your
+  latest edits. You can also trigger a rebuild manually.
+- `skips.md` and `strengths.md` are captured as you use the app (**Skip ▾ → Skip & down-rank**
+  adds a skip; strengths you maintain) and are editable directly as markdown.
+
+### The guardrails (fixed, in code)
+These don't change with learning — they're enforced in `engine/draft.py` (the drafting system
+prompt + post-processing) and the project's hard rules:
+
+- **No auto-submit, ever** — Caddie AI drafts and fills; *you* send every application.
+- **No invention** — never fabricates an employer, date, metric, or "why-excited" fact; an
+  un-fillable cover-letter slot becomes a visible `[ tell me … ]` placeholder, not a made-up claim.
+- **Your base CV is never auto-edited** — learnings only steer *future drafts*, never your source docs.
+- **Cover-letter backbone is near-sacred** — your prose/voice is kept; only the `[SLOTS]` are filled.
+- **House style enforced in code** — em-dashes stripped from prose; standard CV page breaks inserted.
+- **Location isn't a "gap"** — geography is handled by the geo gate + remote score, never listed as unmet.
+- **Local & private** — runs on `localhost`; your CV, history, and API key never leave your machine.
+
+To change the *soft* rules, edit `style-rules.md` (or prune the edits that produced them). The
+*hard* rules above live in code by design.
+
+---
+
+## 6. Optional board API keys
 
 See [Step 2](#2-credentials-env) — Adzuna (free) and Web3 Career need keys in `.env`; the ATS
 boards do not. Restart the app after adding keys.
 
 ---
 
-## 6. Reset a handed-over copy
+## 7. Reset a handed-over copy
 
 If you were given a folder containing someone else's data, clear it before using your own:
 
@@ -182,7 +225,7 @@ is kept — edit it or the Boards tab as you like.)
 
 ---
 
-## 7. Troubleshooting
+## 8. Troubleshooting
 
 - **`ERR_CONNECTION_REFUSED`** — the server isn't running; `./run.sh`.
 - **Scores all low / "no AI key"** — check `ANTHROPIC_API_KEY` in `.env`, then restart.
