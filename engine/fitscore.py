@@ -30,6 +30,15 @@ CV_CHARS = 3000
 DEFAULT_RUBRIC = ("Weigh qualifications/CV match first (biggest factor), then "
                   "domain fit, then stage (prefers early-stage / 0→1), then remote/UK.")
 
+# Location / work-mode are handled by the geo gate + the remote score, NOT listed as
+# "unmet qualifications" — so they're filtered out of every unmet/gap list.
+_LOC_RE = re.compile(r"on-?site|hybrid|\bremote\b|relocat|in[- ]?office|commut|based in|"
+                     r"located in|\blocation\b|time ?zone", re.I)
+
+
+def is_location_gap(s: str) -> bool:
+    return bool(_LOC_RE.search(s or ""))
+
 
 def _negative_anchors() -> str:
     from . import store
@@ -68,9 +77,11 @@ text that most drive the match to the candidate's strengths/preferences. Use an
 empty list [] when the job text is too thin to quote.
 "unmet": up to 3 SHORT tags (<= 5 words), each a major requirement or
 qualification stated or clearly implied in THIS job's text that the candidate
-does NOT meet (e.g. "10y B2B SaaS", "fintech domain", "manages 20+ reports",
-"on-site in NYC"). These must be the JOB's demands the candidate falls short on
-— NOT the candidate's own skills, and NOT strengths of theirs the JD omits.
+does NOT meet (e.g. "10y B2B SaaS", "fintech domain", "manages 20+ reports").
+These must be the JOB's demands the candidate falls short on — NOT the
+candidate's own skills, and NOT strengths of theirs the JD omits. NEVER list
+location, work mode, geography, or relocation/visa as unmet — geography is
+handled by the geo gate and the remote score, not here.
 Empty [] if the candidate plausibly meets the stated requirements.
 "location": the job's location or region if stated OR reasonably inferable from
 the text (e.g. "Remote", "Remote — US", "London, UK", "EMEA", "Berlin"). Empty ""
@@ -123,11 +134,12 @@ node-operator economics" or "consensus protocol expertise" unless those exact
 ideas appear in the JD). It must be something the candidate clearly LACKS AND that
 is NOT already covered by the CANDIDATE STRENGTHS listed above (if a strength
 covers it, it is MET — never list it). Examples: "10+ yrs B2B fintech PM",
-"managed 50+ eng", "must be onsite in NYC". Scan the JD's requirements; list only
-the ones the CV does not satisfy. Do NOT list the
-candidate's own preferences, strengths the JD merely omits, or company/comp gripes
-(NOT "no evidence they value founders", NOT "comp below market", NOT "company
-doesn't specialise in Voice AI"). [] if the candidate plausibly meets everything.
+"managed 50+ eng", "deep ML research background". Scan the JD's requirements; list
+only the ones the CV does not satisfy. Do NOT list the candidate's own preferences,
+strengths the JD merely omits, company/comp gripes, or LOCATION / work-mode /
+geography (NOT "onsite in London", NOT "hybrid not remote", NOT "comp below market",
+NOT "no evidence they value founders"). Geography is handled separately by the geo
+gate + remote score. [] if the candidate plausibly meets everything.
 "breakdown": score the candidate's TRUE standing on each dimension 0-100, judged
 semantically from their CV + summary (NOT literal keyword matching) — e.g. a deep
 0→1 AI builder scores high on Qualifications even if the JD never uses those words."""
@@ -174,7 +186,7 @@ def analyze(job: dict, profile: dict, cv_text: str, score: int = None) -> dict:
         low = {s.lower(): s for s in skills}
         result["skills_matched"] = [low[m.lower()] for m in matched if m.lower() in low]
         result["unmet"] = [str(u)[:120] for u in (data.get("unmet") or [])
-                           if str(u).strip()][:6]
+                           if str(u).strip() and not is_location_gap(str(u))][:6]
         for d in (data.get("breakdown") or [])[:6]:
             if str(d.get("label", "")).strip():
                 result["breakdown"].append({
@@ -282,7 +294,7 @@ def score_batch(raws: list, profile: dict, cv_text: str):
                             "drivers": [str(d)[:90] for d in drivers if str(d).strip()][:3],
                             "location": str(item.get("location", ""))[:60].strip(),
                             "unmet": [str(u)[:48] for u in (item.get("unmet") or [])
-                                      if str(u).strip()][:3],
+                                      if str(u).strip() and not is_location_gap(str(u))][:3],
                         }
                 any_ok = True
                 break

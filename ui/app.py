@@ -612,7 +612,8 @@ def make_analysis(job_id: str) -> dict:
     job.analysis = Analysis(**data)
     # Keep the jobs-table Unmet column showing the JD gap: short tags from the
     # analysis's unmet (JD→candidate) requirements.
-    gaps = [_short_tag(u) for u in (data.get("unmet") or []) if str(u).strip()]
+    gaps = [_short_tag(u) for u in (data.get("unmet") or [])
+            if str(u).strip() and not fitscore.is_location_gap(u)]
     if gaps:
         job.unmet = gaps[:3]
     store.save_job(job)
@@ -670,7 +671,8 @@ def make_jd(job_id: str) -> dict:
                    requirements=reqs)
     # Keep the jobs-table Unmet column consistent with the JD GAP: short tags
     # built from the 'mismatch' requirements (else the scorer's tags remain).
-    gaps = [_short_tag(r.quote) for r in reqs if r.level == "mismatch"]
+    gaps = [_short_tag(r.quote) for r in reqs
+            if r.level == "mismatch" and not fitscore.is_location_gap(r.quote)]
     if gaps:
         job.unmet = gaps[:3]
     store.save_job(job)

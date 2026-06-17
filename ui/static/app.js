@@ -675,7 +675,7 @@ function aggregatorName(url) {
 function aggWarn(job) {
   const a = aggregatorName(job.url || "");
   if (!a) return "";
-  return `<div class="hint" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+  return `<div class="hint" data-doc="d-sq" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
     <span class="muted">${a} aggregator link — screening answers below are inferred.</span>
     <button class="btn sm" type="button" onclick="resolveApply(this)">🔎 Find the real application &amp; fetch its questions</button>
     <span id="resolveMsg" class="hint"></span></div>`;
@@ -1145,9 +1145,10 @@ function dtab(e, id) {
   if (active) active.classList.add("on");
   syncDocActions(id);
 }
-// Tier 2: show only the per-tab actions relevant to the active document (CV / CL / Screening).
+// Show only the elements (per-tab action buttons + the aggregator note) relevant to
+// the active document (CV / CL / Screening).
 function syncDocActions(id) {
-  document.querySelectorAll(".docactions [data-doc]").forEach(b => b.classList.toggle("hide", b.dataset.doc !== id));
+  document.querySelectorAll("#draftArea [data-doc]").forEach(b => b.classList.toggle("hide", b.dataset.doc !== id));
 }
 
 async function toggleBookmarkReview() {
