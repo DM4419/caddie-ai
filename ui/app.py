@@ -254,7 +254,9 @@ def job_detail(job_id: str) -> dict:
     if job.status == "new":          # opening it counts as "checked"
         job.status = "review"
         store.save_job(job)
-    return {"job": job.model_dump()}
+    cvs = store.list_app_cvs()
+    return {"job": job.model_dump(),
+            "cv_options": [{"id": c["id"], "name": c["name"]} for c in cvs]}
 
 
 @app.get("/api/style")
@@ -341,6 +343,8 @@ def make_draft(job_id: str, body: Optional[DraftIn] = None) -> dict:
         questions=real_qs,
         role_fit={"matched": job.drivers, "unmet": job.unmet},
     )
+    draft.cv_used = ({"id": chosen["id"], "name": chosen["name"]} if chosen
+                     else {"id": "", "name": "Matching CV (no variants yet)"})
     job.draft = draft
     store.save_job(job)
     return {"draft": draft.model_dump(),
@@ -658,8 +662,13 @@ def make_jd(job_id: str) -> dict:
     # fetch the full JD from the apply URL; fall back to the stored description
     text, err = job.description, ""
     if job.url:
+        import httpx
         try:
-            fetched = (fetch_mod.fetch(job.url) or {}).get("description", "")
+            resp = httpx.get(job.url, follow_redirects=True, timeout=20, headers=questions.UA)
+            final = str(resp.url)
+            if final != job.url:
+                job.url = final          # aggregator/redirect -> real apply page (e.g. Ashby)
+            fetched = (fetch_mod.fetch(final) or {}).get("description", "")
             if len(fetched) > len(text):
                 text = fetched
         except Exception as e:

@@ -182,9 +182,21 @@ def analyze(job: dict, profile: dict, cv_text: str, score: int = None) -> dict:
         result["best_fit"] = str(data.get("best_fit", ""))[:1200]
         result["shortcomings"] = str(data.get("shortcomings", ""))[:1200]
         matched = data.get("skills_matched") or []
-        # keep only real profile skills, case-insensitive
-        low = {s.lower(): s for s in skills}
-        result["skills_matched"] = [low[m.lower()] for m in matched if m.lower() in low]
+        # map each returned skill to a real profile skill — exact OR substring either way,
+        # so paraphrases ("a/b testing" vs "experimentation") aren't silently dropped to 0.
+        def _canon(m):
+            ml = str(m).lower().strip()
+            for s in skills:
+                sl = s.lower()
+                if ml == sl or (len(ml) >= 4 and (ml in sl or sl in ml)):
+                    return s
+            return None
+        seen = []
+        for m in matched:
+            c = _canon(m)
+            if c and c not in seen:
+                seen.append(c)
+        result["skills_matched"] = seen
         result["unmet"] = [str(u)[:120] for u in (data.get("unmet") or [])
                            if str(u).strip() and not is_location_gap(str(u))][:6]
         for d in (data.get("breakdown") or [])[:6]:

@@ -456,8 +456,10 @@ async function saveJobUrl() {
 
 // ---- review --------------------------------------------------------------
 async function openReview(id) {
-  const { job } = await api(`/api/jobs/${id}`);
+  const { job, cv_options } = await api(`/api/jobs/${id}`);
   currentJob = job;
+  currentJob._cvOptions = cv_options || [];
+  currentJob._cvUsed = (job.draft && job.draft.cv_used) || null;
   const title = `${job.role} — ${job.company}`;
   document.getElementById("rwTitle").textContent = title;
   document.getElementById("rwH").textContent = title;

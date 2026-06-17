@@ -101,6 +101,7 @@ class Draft(BaseModel):
     generated_at: str = ""
     model: str = ""
     error: str = ""                 # set when generation failed / no API key
+    cv_used: Optional[dict] = None  # {id,name} of the application-CV variant drafted from
 
 
 Job.model_rebuild()
