@@ -1,0 +1,33 @@
+# --- secrets (NEVER commit) ---
+.env
+
+# --- python / env ---
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# --- generated / private runtime data ---
+# The repo ships SAMPLE base-cv.md, base-cl.md and profile.yaml (tracked, so the
+# app runs out of the box). Everything below is private runtime data and stays
+# local: fetched jobs, drafts, your application tracker, and learning files.
+# NOTE: if you swap in your real CV/profile and want them private, add
+#   cv/base-cv.md  cv/base-cl.md  data/profile.yaml
+# to this file too.
+data/jobs/
+data/drafts/
+data/applications.csv
+data/state.json
+data/draft-backup-*.json
+data/style.md
+data/style-examples.md
+data/style-rules.md
+data/strengths.md
+data/skips.md
+cv/apps/
+cv/reference.pdf
+
+# Keep the placeholder dirs in git
+!data/jobs/.gitkeep
+!data/drafts/.gitkeep
+!cv/apps/.gitkeep

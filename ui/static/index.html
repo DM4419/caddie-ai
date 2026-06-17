@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>caddie-ai</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#fff; --ink:#16191d; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#2f6df6; --green:#16a34a; --amber:#d97706; --red:#dc2626;
+    --radius:10px; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 12px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .app{display:grid;grid-template-columns:190px 1fr;min-height:100vh}
+  aside{background:#0f1115;color:#cbd2dc;padding:18px 14px;position:sticky;top:0;height:100vh}
+  aside h1{color:#fff;font-size:15px;margin:4px 6px 2px}
+  aside .sub{color:#7c8597;font-size:11px;margin:0 6px 18px}
+  nav button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;color:#cbd2dc;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px}
+  nav button:hover{background:#1a1d24;color:#fff}
+  nav button.active{background:var(--accent);color:#fff}
+  nav .dot{width:7px;height:7px;border-radius:50%;background:#3a4150}
+  nav button.active .dot{background:#fff}
+  aside .foot{position:absolute;bottom:14px;left:14px;right:14px;color:#5b6473;font-size:10px;line-height:1.4}
+  main{padding:24px 30px;max-width:1280px}
+  .crumb{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .crumb a{color:var(--accent);text-decoration:none;cursor:pointer}
+  .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px}
+  .head h2{margin:0;font-size:20px}
+  .head .meta{color:var(--muted);font-size:12.5px;margin-top:3px}
+  .btn{background:var(--accent);color:#fff;border:0;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn.sm{padding:5px 9px;font-size:12px}
+  .btn.ok{background:var(--green)} .btn.danger{background:#fff;color:var(--red);border:1px solid #f3c7c7}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .panel.p{padding:16px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:0}
+  .rowlink{cursor:pointer} .rowlink:hover{background:#fafbff}
+  .score{font-weight:700;font-size:15px}
+  .s-hi{color:var(--green)} .s-mid{color:var(--amber)} .s-lo{color:var(--muted)}
+  .sub2{font-size:11.5px;color:var(--muted);margin-top:1px}
+  .new{background:#fde68a;color:#92400e;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:6px;vertical-align:middle}
+  .mode{font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px}
+  .m-remote{background:#dcfce7;color:#166534}
+  .m-hybrid{background:#e0e7ff;color:#3730a3}
+  .m-onsite{background:#fee2e2;color:#991b1b}
+  .status-pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;white-space:nowrap;display:inline-block}
+  tr.boardrow{cursor:pointer}
+  tr.boardrow:hover{background:#f8fafc}
+  .caret{display:inline-block;width:12px;color:var(--muted);font-size:10px}
+  tr.grouphdr td{background:#f1f5f9;border-top:2px solid var(--line);font-size:12px;padding:7px 10px}
+  .compchip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:14px;padding:2px 9px;font-size:11.5px;background:#fff}
+  .compchip a{color:var(--ink);text-decoration:none}
+  .compchip a:hover{color:var(--accent)}
+  .compx{color:var(--muted);cursor:pointer;font-size:10px}
+  .compx:hover{color:#b91c1c}
+  .compstat{font-size:10px}
+  .st-new{background:#fef3c7;color:#92400e}
+  .st-review{background:#dbeafe;color:#1e40af}
+  .st-approved{background:#dcfce7;color:#166534}
+  .st-applied{background:#e0e7ff;color:#3730a3}
+  .st-rejected{background:#fee2e2;color:#991b1b}
+  .st-skipped{background:#f1f5f9;color:#475569}
+  .src{display:inline-flex;flex:0 0 auto}
+  .srcfav{width:16px;height:16px;border-radius:4px;object-fit:contain;display:inline-block}
+  .srcav{width:16px;height:16px;border-radius:4px;align-items:center;justify-content:center;color:#fff;font-size:8.5px;font-weight:700;line-height:1}
+  .muted{color:var(--muted)}
+  .chip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:#e3eefb;color:#1d4ed8}
+  .jd{color:var(--accent);text-decoration:none;font-weight:600}
+  .hide{display:none !important}
+  .linkbtn{background:none;border:0;color:var(--accent);font-size:12.5px;cursor:pointer;padding:8px 0}
+  .tabs2{display:flex;gap:6px}
+  .tabs2 button{border:1px solid var(--line);background:#fff;padding:6px 12px;border-radius:8px;font-size:12.5px;cursor:pointer}
+  .tabs2 button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .leanbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .whyline{font-size:12.5px;color:#33373d;background:#f8f9fb;border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 8px 8px 0;margin-bottom:14px}
+  .banner{display:flex;gap:10px;align-items:center;background:#fef3c7;border:1px solid #fcd34d;color:#92400e;padding:10px 14px;border-radius:10px;margin-bottom:14px;font-size:13px}
+  .banner a{color:#92400e;font-weight:700;cursor:pointer;text-decoration:underline}
+  .banner.red{background:#fee2e2;border-color:#fca5a5;color:#991b1b}
+  .lang-block{display:inline-block;background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:6px;vertical-align:middle}
+  .role-off{display:inline-block;background:#e5e7eb;color:#4b5563;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:6px;vertical-align:middle}
+  .star{cursor:pointer;color:#c7ccd6;font-size:15px;margin-right:5px;vertical-align:baseline}
+  .star.on{color:#f0b400}
+  .anh{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+  .anp{font-size:13px;line-height:1.55;margin:4px 0 0;color:#33373d}
+  .skill{display:inline-block;border:1px solid var(--line);background:#fafbfc;color:var(--muted);font-size:11.5px;padding:2px 9px;border-radius:20px}
+  .skill.on{background:#dcfce7;border-color:#86efac;color:#166534;font-weight:600}
+  .unmet-pill{display:inline-block;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:10.5px;padding:1px 7px;border-radius:20px;margin:1px 3px 1px 0}
+  .flagchip{display:inline-block;background:#f5f3ff;border:1px solid #ddd6fe;color:#6d28d9;font-size:10px;font-weight:600;padding:0 6px;border-radius:20px;margin:2px 3px 0 0}
+  mark.req-match{background:#dcfce7;border-bottom:2px solid #16a34a;border-radius:2px;padding:0 1px}
+  mark.req-stretch{background:#fef9c3;border-bottom:2px solid #ca8a04;border-radius:2px;padding:0 1px}
+  mark.req-mismatch{background:#fee2e2;border-bottom:2px solid #dc2626;border-radius:2px;padding:0 1px}
+  .doc{border:1px solid var(--line);border-radius:10px;padding:26px 30px;font-size:13px;line-height:1.7;background:#fff}
+  .doc h3{font-size:18px;margin:0 0 2px}
+  .doc .role-h{font-size:13.5px;font-weight:700;margin:14px 0 2px}
+  .doc .small{color:var(--muted);font-size:12px}
+  .doc ul{margin:4px 0 0;padding-left:18px}
+  .doc li{margin:2px 0}
+  mark.chg{background:#fff3cd;border-bottom:2px solid #f0c000;border-radius:3px;padding:0 2px;cursor:pointer}
+  mark.chg:hover{background:#ffe9a8}
+  mark.chg.gap{background:#ffe0c2;border-bottom:2px solid #e8851f;font-style:italic}
+  mark.chg.gap:hover{background:#ffd0a3}
+  mark.done{background:transparent;border-bottom:2px dotted #9aa3af;cursor:pointer}
+  /* CV library — compact doc rows */
+  .docrow{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .doclab{font-weight:600;font-size:13px}
+  .doclab .muted{font-weight:400}
+  .docstat{font-size:12.5px;margin-top:3px}
+  .docstat .actions a{margin-left:10px;cursor:pointer}
+  .docup{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}
+  .docup input[type=file]{font-size:12px}
+  .docup textarea{flex-basis:100%;width:100%}
+  .pastetoggle{cursor:pointer}
+  .fieldlab{font-size:12px;font-weight:600;display:block}
+  .flagpick{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;font-size:12.5px;margin-top:4px}
+  .flagpick label{display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer}
+  .appcv-row{display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;font-size:13px}
+  .doc.editing{outline:2px dashed #9bc4ff;outline-offset:4px;border-radius:6px;background:#fcfdff}
+  .doc.editing:focus{outline-color:#3b82f6}
+  .doc.editing .role-h{cursor:text}
+  .doc.editing mark{cursor:text}
+  /* click-any-line-to-edit (when not in inline-edit mode) */
+  .doc:not(.editing) li:hover,.doc:not(.editing) p:hover,.doc:not(.editing) .role-h:hover{background:#f3f7ff;cursor:pointer;border-radius:3px}
+  .doc .lineedited{border-left:2px solid #c7cdd6;padding-left:7px;margin-left:-9px}
+  /* screening: question is a read-only label, only the answer is editable */
+  .doc .sq{margin:10px 0}
+  .doc .sq-q{margin:0 0 2px}
+  .doc .sq-a{margin:0}
+  .doc:not(.editing) .sq-q:hover{background:none !important;cursor:default}
+  /* manual page break marker (forces a new page on PDF/DOCX export) */
+  .doc hr.pagebreak{border:none;border-top:2px dashed #9bb0d6;margin:16px 0;height:0;position:relative;overflow:visible}
+  .doc hr.pagebreak::after{content:"⤓ page break";position:absolute;right:0;top:-8px;background:var(--bg,#fff);color:#6b86c2;font-size:10px;font-weight:600;padding:0 6px}
+  /* per-document download panel */
+  .dlbar{margin:8px 0 12px;font-size:13px}
+  .dlbar summary{cursor:pointer;color:var(--ink);padding:4px 0}
+  .dlgrid{display:grid;grid-template-columns:auto auto auto auto;gap:8px 10px;align-items:center;
+          justify-content:start;margin-top:8px;padding:10px 12px;border:1px solid var(--line);
+          border-radius:10px;max-width:520px}
+  .dlgrid .dlname{font-weight:600}
+  .dlgrid .dlhdr{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:center}
+  .dlgrid .btn{min-width:58px}
+  /* paste-revised-CL review */
+  .modal.wide{max-width:820px;width:94vw;max-height:92vh}
+  .clchg{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px}
+  .clchg-old{background:#ffe0e3;border-radius:4px;padding:3px 6px;font-size:12.5px;text-decoration:line-through;opacity:.8;margin-bottom:4px}
+  .clchg-new{background:#d6f5dd;border-radius:4px;padding:3px 6px;font-size:13px}
+  /* word-level diff in the Review-change modal */
+  .opt .txt .ins{background:#d6f5dd;border-radius:2px;padding:0 1px;font-weight:600}
+  .opt .txt .del{background:#ffe0e3;border-radius:2px;padding:0 1px;text-decoration:line-through;opacity:.85}
+  .difflegend{margin-left:8px;font-size:10px;font-weight:400}
+  .difflegend .ins,.difflegend .del{padding:0 4px;border-radius:3px}
+  .hint{font-size:11.5px;color:var(--muted)}
+  details{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:#fff;margin-top:12px}
+  summary{cursor:pointer;font-size:13px;font-weight:600}
+  .card-cv{padding:14px;border:1px dashed var(--line);border-radius:10px;background:#fafbfc}
+  .card-cv h4{margin:0 0 4px;font-size:14px}
+  .grid{display:grid;gap:12px}
+  textarea.ta{width:100%;height:120px;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;font-family:inherit;resize:vertical}
+  .pill-row{display:flex;gap:6px;flex-wrap:wrap}
+  .ok-tag{color:var(--green);font-weight:700}
+  .overlay{position:fixed;inset:0;background:rgba(15,17,21,.45);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
+  .modal{background:#fff;border-radius:14px;max-width:620px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .modal .mh{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .modal .mh h3{margin:0;font-size:15px}
+  .modal .mb{padding:18px 20px}
+  .rat{background:#f8f9fb;border-left:3px solid var(--accent);padding:10px 12px;border-radius:0 8px 8px 0;font-size:12.5px;margin-bottom:16px}
+  .opt{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;cursor:pointer}
+  .opt.sel{border-color:var(--accent);box-shadow:0 0 0 2px rgba(47,109,246,.15)}
+  .opt .lab{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .opt .txt{font-size:13px;line-height:1.6}
+  .opt .dotsel{width:14px;height:14px;border-radius:50%;border:2px solid #c7ccd6}
+  .opt.sel .dotsel{border-color:var(--accent);background:radial-gradient(circle,#2f6df6 0 5px,#fff 6px)}
+  .mf{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+  .x{background:none;border:0;font-size:20px;cursor:pointer;color:var(--muted);line-height:1}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid #c7ccd6;border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #printArea{display:none}
+  @media print{
+    body *{visibility:hidden}
+    #printArea, #printArea *{visibility:visible}
+    #printArea{display:block;position:absolute;top:0;left:0;width:100%;padding:40px 48px;font-size:12.5px;line-height:1.6;color:#000}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1>caddie-ai</h1>
+    <p class="sub">Phase 0 · paste → review</p>
+    <nav id="nav">
+      <button data-view="jobs" class="active"><span class="dot"></span>Jobs</button>
+      <button data-view="boards"><span class="dot"></span>Boards</button>
+      <button data-view="settings"><span class="dot"></span>Settings</button>
+    </nav>
+    <div class="foot">Loop: paste a JD → score → review &amp; edit → download → apply by hand.</div>
+  </aside>
+
+  <main>
+    <!-- JOBS -->
+    <section id="jobs">
+      <div id="cvBanner" class="banner hide">
+        <span>⚠️ Upload your <strong>base CV</strong> so drafts are tailored to you.</span>
+        <a onclick="go('settings')">Open Settings →</a>
+      </div>
+      <div id="scanResult" class="banner hide"></div>
+      <div class="head">
+        <div><h2>Jobs</h2><div class="meta" id="jobsMeta">No jobs yet — paste a JD to begin.</div></div>
+        <div>
+          <button class="btn ghost" onclick="downloadCsv()">⬇ CSV</button>
+          <button class="btn ghost" onclick="togglePaste()">+ Paste a role</button>
+          <button class="btn" id="refreshBtn" onclick="refreshJobs()">↻ Refresh all sources</button>
+        </div>
+      </div>
+      <div id="pastePanel" class="panel p hide">
+        <input type="text" id="pUrl" placeholder="Paste a job URL (e.g. https://jobs.lever.co/acme/123)" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px"/>
+        <textarea class="ta" id="pText" placeholder="…or paste the full job description (optional if URL given)"></textarea>
+        <div style="margin-top:8px">
+          <button class="btn" id="pasteAdd" onclick="addPasted()">Add to list</button>
+          <button class="btn ghost" onclick="togglePaste()">Cancel</button>
+          <span id="pasteMsg" class="hint" style="margin-left:8px"></span>
+        </div>
+        <div class="hint" style="margin-top:8px">The agent fetches the URL, scores it, and adds a row below. Click the row to review drafts.</div>
+      </div>
+      <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div class="tabs2">
+          <button class="on" id="tab-active" onclick="setJobView('active')">Active</button>
+          <button id="tab-founder" onclick="setJobView('founder')">⚑ Founder-fit <span id="founderCount" class="muted"></span></button>
+          <button id="tab-voice" onclick="setJobView('voice')">🎙 Voice AI <span id="voiceCount" class="muted"></span></button>
+          <button id="tab-bookmarked" onclick="setJobView('bookmarked')">★ Bookmarked <span id="bookmarkedCount" class="muted"></span></button>
+          <button id="tab-applied" onclick="setJobView('applied')">Applied <span id="appliedCount" class="muted"></span></button>
+          <button id="tab-skipped" onclick="setJobView('skipped')">Skipped <span id="skippedCount" class="muted"></span></button>
+          <button id="tab-archived" onclick="setJobView('archived')">Archived <span id="archCount" class="muted"></span></button>
+        </div>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <label style="font-size:12px;color:var(--muted)">Posted
+            <select id="dateFilter" onchange="setDateFilter(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;margin-left:6px;background:#fff">
+              <option value="any">Any time</option>
+              <option value="1">Last 24 hrs</option>
+              <option value="2">Last 48 hrs</option>
+              <option value="3">Last 3 days</option>
+              <option value="7">Last 7 days</option>
+            </select>
+          </label>
+          <label style="font-size:12px;color:var(--muted)">Work type
+            <select id="workFilter" onchange="setWorkFilter(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;margin-left:6px;background:#fff">
+              <option value="all">All</option>
+              <option value="remote_any">Remote · Anywhere</option>
+              <option value="remote_uk">Remote · UK</option>
+              <option value="remote_eu">Remote · EU</option>
+              <option value="remote_country">Remote · Other</option>
+              <option value="hybrid_london">Hybrid · London/UK</option>
+              <option value="hybrid_other">Hybrid · Non-UK</option>
+              <option value="office_uk">In office · UK</option>
+              <option value="office_other">In office · Non-UK</option>
+            </select>
+          </label>
+          <label style="font-size:12px;color:var(--muted)">Sort
+            <select id="sortBy" onchange="setSortBy(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;margin-left:6px;background:#fff">
+              <option value="score">AI score</option>
+              <option value="weighted">Weighted score</option>
+              <option value="seniority">Seniority (high→low)</option>
+              <option value="posted">Date posted (newest)</option>
+              <option value="salary">Salary (high→low)</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div class="panel p" style="margin-top:10px">
+        <table><thead><tr><th title="AI fit score (rubric)">AI</th><th title="Weighted keyword-factor score">⚖ Wt</th><th style="width:180px">Role / Company</th><th style="width:90px">Location</th><th>Mode</th><th style="width:320px">Key matching drivers</th><th>Unmet</th><th>Status</th></tr></thead>
+          <tbody id="jobRows"><tr><td colspan="8" class="muted">Loading…</td></tr></tbody></table>
+      </div>
+    </section>
+
+    <!-- REVIEW -->
+    <section id="review" class="hide">
+      <div class="crumb"><a onclick="go('jobs')">Jobs</a> › <span id="rwTitle"></span></div>
+      <div class="head">
+        <div><h2 id="rwH"></h2><div class="meta" id="rwMeta"></div></div>
+        <div>
+          <button class="btn ghost" id="bmBtn" onclick="toggleBookmarkReview()">☆ Bookmark</button>
+          <button class="btn danger" onclick="setStatus('skipped')">Skip</button>
+          <button class="btn ok" onclick="setStatus('applied')">Approve &amp; mark applied</button>
+        </div>
+      </div>
+
+      <div id="langWarn"></div>
+      <div class="whyline" id="whyline"></div>
+      <div id="fitAnalysis"></div>
+      <div id="jdSection"></div>
+
+      <div id="draftArea"></div>
+    </section>
+
+    <!-- BOARDS -->
+    <section id="boards" class="hide">
+      <div class="head">
+        <div><h2>Boards</h2><div class="meta">Sources we scan for roles</div></div>
+      </div>
+
+      <div class="panel p" style="margin-bottom:12px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">Add a source</div>
+        <div class="hint" style="margin-bottom:8px">Paste a <strong>job board, company careers page, or recruiter website</strong> URL — we'll scan it for matching roles. (To add a single role, use <a class="jd" onclick="go('jobs')" style="cursor:pointer">Jobs → + Paste a role</a>.)</div>
+        <div style="display:flex;gap:8px;align-items:center;max-width:680px">
+          <input id="newBoardUrl" placeholder="company careers page · ATS board · recruiter site · job board URL" style="flex:1;border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:13px" onkeydown="if(event.key==='Enter')addBoard()">
+          <button class="btn ok" onclick="addBoard()">+ Add board</button>
+        </div>
+        <div id="addBoardMsg" class="hint" style="margin-top:8px"></div>
+      </div>
+
+      <div class="panel p">
+        <div onclick="toggleRegistry()" style="cursor:pointer;font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px">
+          <span class="caret" id="regCaret">▾</span> Registry <span id="boardCount" class="muted" style="font-weight:400"></span>
+          <span class="muted" style="font-weight:400;font-size:11px">— core boards; companies &amp; recruiters below</span>
+        </div>
+        <div id="registryBody" style="margin-top:8px">
+          <table><thead><tr><th>Board</th><th>Tier</th><th>Access</th><th>Last scan</th><th>Status</th><th></th></tr></thead>
+            <tbody id="boardRows"></tbody></table>
+        </div>
+      </div>
+      <div id="groupCards"></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="settings" class="hide">
+      <div class="head"><div><h2>Settings</h2><div class="meta">Set once, then ignore</div></div></div>
+      <details><summary>CV library &amp; documents <span class="muted" style="font-weight:400">— matching CV (scoring) + application variants (drafting)</span></summary>
+
+        <!-- Matching CV + Base cover letter: one compact row each -->
+        <div class="docrow">
+          <div>
+            <div class="doclab">Matching CV <span class="muted">— scores every job; not sent in applications</span></div>
+            <div id="cvStatus" class="docstat"></div>
+          </div>
+          <div id="cvUpload" class="docup">
+            <input type="file" id="cvFile" accept=".md,.txt,.markdown,.pdf,.docx"/>
+            <a class="jd pastetoggle" onclick="togglePasteText('cv')">paste text</a>
+            <button class="btn sm" onclick="uploadBase('cv')">Save</button>
+            <span id="cvMsg" class="hint"></span>
+            <textarea class="ta hide" id="cvText" placeholder="Paste your matching CV text…" style="height:120px;margin-top:6px"></textarea>
+          </div>
+        </div>
+        <div class="docrow">
+          <div>
+            <div class="doclab">Base cover letter <span class="muted">— backbone template the drafter fills</span></div>
+            <div id="clStatus" class="docstat"></div>
+          </div>
+          <div id="clUpload" class="docup">
+            <input type="file" id="clFile" accept=".md,.txt,.markdown,.pdf,.docx"/>
+            <a class="jd pastetoggle" onclick="togglePasteText('cl')">paste text</a>
+            <button class="btn sm" onclick="uploadBase('cl')">Save</button>
+            <span id="clMsg" class="hint"></span>
+            <textarea class="ta hide" id="clText" placeholder="Paste your cover letter text…" style="height:120px;margin-top:6px"></textarea>
+          </div>
+        </div>
+
+        <div class="doclab" style="margin-top:18px">Application CVs <span class="muted">— flavoured variants; one is auto-picked per job by its flags when drafting</span></div>
+        <div id="appCvs" style="margin:8px 0"></div>
+        <button class="btn sm ghost" id="appAddBtn" onclick="toggleAppForm()">+ Add a variant</button>
+        <div id="appForm" class="hide" style="border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:8px;max-width:560px">
+          <label class="fieldlab">Variant name</label>
+          <input id="appName" placeholder="e.g. Founder | EIR" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin:3px 0 12px">
+          <label class="fieldlab">Auto-pick for jobs flagged</label>
+          <div class="flagpick">
+            <label><input type="checkbox" value="eir"> EIR / Founder-in-Residence</label>
+            <label><input type="checkbox" value="founder_welcome"> Ex-founders welcome</label>
+            <label><input type="checkbox" value="zero_to_one"> 0→1 build</label>
+            <label><input type="checkbox" value="voice_ai"> Voice / conversational AI</label>
+            <label><input type="checkbox" value="web3"> Web3 / Blockchain / crypto</label>
+          </div>
+          <label class="fieldlab" style="margin-top:12px">CV file <span class="muted" style="font-weight:400">(.pdf, .docx, .md, .txt — text is extracted)</span></label>
+          <input type="file" id="appFile" accept=".md,.txt,.markdown,.pdf,.docx" style="display:block;font-size:12px;margin:4px 0 12px">
+          <button class="btn sm ok" onclick="addAppCv()">Save variant</button>
+          <button class="btn sm ghost" onclick="toggleAppForm()">Cancel</button>
+          <span id="appMsg" class="hint"></span>
+        </div>
+
+        <div class="doclab" style="margin-top:18px">Reference PDF <span class="muted">— one human-formatted master, kept for layout reference / export</span></div>
+        <div id="refPdfStatus" class="docstat" style="margin:6px 0"></div>
+        <input type="file" id="refPdfFile" accept=".pdf" style="font-size:12px"> <button class="btn sm" onclick="uploadReference()">Save reference PDF</button> <span id="refMsg" class="hint"></span>
+        <div class="hint" style="margin-top:10px">Multiple base versions (crypto / CPO-VP / founding) come in a later phase — single set keeps the MVP lean.</div>
+      </details>
+
+      <details open><summary>AI fit scoring <span class="muted" style="font-weight:400">— how the 0–100 score is actually set</span></summary>
+        <div class="hint" style="margin:8px 0;line-height:1.6">
+          The score you see is set by an <strong>AI model (Claude Haiku)</strong> that reads each job against your <strong>CV + LinkedIn summary</strong> and follows the rubric below — judged semantically, not by keyword matching. It works in two steps:
+          <ol style="margin:6px 0 0;padding-left:20px">
+            <li><strong>Skills &amp; qualifications match sets the ceiling</strong> — a weak match caps the score low no matter how attractive the role; a strong, specific overlap with your CV pushes it high.</li>
+            <li><strong>Role-type tier places it within that ceiling</strong> — remote-anywhere 0→1 founder-led (top) → AI-for-vertical scale-ups → remote Europe HoP → UK-hybrid IC (lower).</li>
+          </ol>
+          <div style="margin-top:6px">Geo &amp; language gates are applied separately (Filters). The <strong>keyword weights below are only a fallback</strong> used when no AI key is configured (and they power the “skills considered ✓” chips).</div>
+        </div>
+        <label style="font-size:12px;font-weight:600">Rubric (sent verbatim to the model — edit to retune ranking)<br>
+          <textarea id="rubricBox" class="ta" style="height:240px;font-weight:400;font-family:ui-monospace,monospace;font-size:11.5px"></textarea></label>
+        <div style="margin-top:8px"><button class="btn sm" onclick="saveRubric()">Save rubric &amp; re-score</button> <span id="rubricMsg" class="hint"></span></div>
+      </details>
+
+      <details><summary>Weighted factors <span class="muted" style="font-weight:400">— the 2nd-scale "weighted" score (also the no-AI fallback)</span></summary>
+        <div class="hint" style="margin:8px 0;line-height:1.6">This is the <strong>weighted score</strong> shown beneath each AI score in the list. Each factor contributes <em>weight × how many of its keywords appear in the job</em>; weights must sum to 100. <strong>Full remote</strong> is mode-based (no keywords). Saving re-scores the list.</div>
+        <div id="scoringBox" style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px"></div>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:12px">
+          <span id="weightSum" style="font-size:13px;font-weight:600"></span>
+          <button class="btn sm" onclick="saveScoring()">Save &amp; re-score</button>
+          <span id="scoringMsg" class="hint"></span>
+        </div>
+      </details>
+
+      <details><summary>Board search queries <span class="muted" style="font-weight:400">— what query-based boards (e.g. Adzuna) search for</span></summary>
+        <div class="hint" style="margin:8px 0">One query per line. The default applies to every query-based board; add a per-board override to search differently there.</div>
+        <div id="rqBox"></div>
+        <div style="margin-top:10px"><button class="btn sm" onclick="saveRoleQueries()">Save queries</button> <span id="rqMsg" class="hint"></span></div>
+      </details>
+
+      <details><summary>Learned preferences <span class="muted" style="font-weight:400">— your manual CV edits that teach future drafts</span></summary>
+        <div class="hint" style="margin:8px 0">Captured each time you edit a highlighted change in a draft (with a rationale). Injected into the model for every new draft. Prune anything you don't want it to learn.</div>
+        <div id="styleBox"></div>
+      </details>
+
+      <details open><summary>Filters <span class="muted" style="font-weight:400">— geo, language &amp; recency gates applied during scanning</span></summary>
+        <div id="filtersBox" style="margin-top:12px"></div>
+        <div style="margin-top:12px"><button class="btn sm" onclick="saveFilters()">Save filters</button> <span id="filtersMsg" class="hint"></span></div>
+      </details>
+    </section>
+  </main>
+</div>
+
+<div id="modal"></div>
+<div id="printArea"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

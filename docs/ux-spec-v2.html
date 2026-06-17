@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Job Applicator — UX Spec v2</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --ink:#16191d; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#2f6df6; --green:#16a34a; --amber:#d97706; --red:#dc2626;
+    --radius:10px; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 12px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+  aside{background:#0f1115;color:#cbd2dc;padding:18px 14px;position:sticky;top:0;height:100vh}
+  aside h1{color:#fff;font-size:15px;margin:4px 6px 2px}
+  aside .sub{color:#7c8597;font-size:11px;margin:0 6px 18px}
+  nav button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;
+    border:0;color:#cbd2dc;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px}
+  nav button:hover{background:#1a1d24;color:#fff}
+  nav button.active{background:var(--accent);color:#fff}
+  nav .dot{width:7px;height:7px;border-radius:50%;background:#3a4150}
+  nav button.active .dot{background:#fff}
+  aside .foot{position:absolute;bottom:14px;left:14px;right:14px;color:#5b6473;font-size:10px;line-height:1.4}
+  main{padding:24px 30px;max-width:1200px}
+  .crumb{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .crumb a{color:var(--accent);text-decoration:none;cursor:pointer}
+  .head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:18px}
+  .head h2{margin:0;font-size:20px}
+  .head p{margin:4px 0 0;color:var(--muted);font-size:12.5px}
+  .btn{background:var(--accent);color:#fff;border:0;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn.sm{padding:5px 9px;font-size:12px}
+  .grid{display:grid;gap:14px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .panel.p{padding:16px}
+  .kpis{grid-template-columns:repeat(4,1fr)}
+  .kpi .n{font-size:26px;font-weight:650}
+  .kpi .l{color:var(--muted);font-size:12px;margin-top:2px}
+  .kpi .d{font-size:11px;margin-top:6px}
+  .up{color:var(--green)} .warn{color:var(--amber)} .bad{color:var(--red)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:0}
+  .chip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+  .c-api{background:#e7f6ec;color:#157f3b}
+  .c-browser{background:#e6eefe;color:#2147c7}
+  .c-manual{background:#f1f1f4;color:#5b6473}
+  .c-crypto{background:#efe7fb;color:#6d28d9}
+  .c-cpo{background:#e3eefb;color:#1d4ed8}
+  .c-founding{background:#e7f6ec;color:#157f3b}
+  .new{background:#fde68a;color:#92400e;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:6px;vertical-align:middle}
+  .mode{font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px}
+  .m-remote{background:#dcfce7;color:#166534}
+  .m-hybrid{background:#e0e7ff;color:#3730a3}
+  .m-onsite{background:#fee2e2;color:#991b1b}
+  .score{font-weight:700}
+  .s-hi{color:var(--green)} .s-mid{color:var(--amber)} .s-lo{color:var(--muted)}
+  .bar{height:6px;border-radius:6px;background:#eceef2;overflow:hidden;min-width:90px}
+  .bar > i{display:block;height:100%;background:var(--accent)}
+  .muted{color:var(--muted)}
+  .sub2{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .section-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:22px 0 10px}
+  .two{grid-template-columns:1fr 1fr}
+  .three{grid-template-columns:repeat(3,1fr)}
+  .card-cv{padding:14px;border:1px dashed var(--line);border-radius:10px;background:#fafbfc}
+  .card-cv h4{margin:0 0 4px;font-size:14px}
+  .upload{border:2px dashed #cdd4df;border-radius:10px;padding:18px;text-align:center;color:var(--muted);font-size:12.5px;background:#fafbff}
+  .rank{font-weight:700;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+  .r-top{background:#1d4ed8;color:#fff} .r-run{background:#dbeafe;color:#1d4ed8} .r-con{background:#f1f1f4;color:#5b6473}
+  .diff ins{background:#e7f6ec;text-decoration:none;color:#0f7a33}
+  .diff del{background:#fdeaea;color:#b42318}
+  .reason{background:#f8f9fb;border-left:3px solid var(--accent);padding:10px 12px;border-radius:0 8px 8px 0;font-size:12.5px;color:#33373d}
+  .tabs2{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .tabs2 button{border:1px solid var(--line);background:#fff;padding:6px 12px;border-radius:8px;font-size:12.5px;cursor:pointer}
+  .tabs2 button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .status-pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px}
+  .st-draft{background:#fef3c7;color:#92400e}
+  .st-review{background:#dbeafe;color:#1e40af}
+  .st-approved{background:#dcfce7;color:#166534}
+  .st-applied{background:#e0e7ff;color:#3730a3}
+  .st-skip{background:#f3f4f6;color:#6b7280}
+  .st-none{background:#f3f4f6;color:#6b7280}
+  .st-ok{background:#dcfce7;color:#166534}
+  .st-failed{background:#fee2e2;color:#991b1b}
+  .st-stale{background:#fef3c7;color:#92400e}
+  .st-na{background:#f3f4f6;color:#6b7280}
+  .note{font-size:11.5px;color:var(--muted);margin-top:8px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:4px}
+  .hide{display:none}
+  .pill-row{display:flex;gap:6px;flex-wrap:wrap}
+  .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  input[type=text],select{border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;background:#fff}
+  .banner{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;padding:10px 12px;border-radius:8px;font-size:12.5px;margin-bottom:14px}
+  .jd{color:var(--accent);text-decoration:none;font-weight:600}
+  .queue{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .queue .q{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
+  .queue .q.active{border-color:var(--accent);box-shadow:0 0 0 2px rgba(47,109,246,.15)}
+  .queue .q b{display:block;font-size:12.5px}
+  .balance{display:flex;align-items:center;gap:10px;margin:6px 0 2px}
+  .balance .track{flex:1;height:10px;border-radius:8px;background:linear-gradient(90deg,#1d4ed8,#16a34a);position:relative}
+  .balance .knob{position:absolute;top:-3px;width:4px;height:16px;background:#16191d;border-radius:3px}
+  .rowlink{cursor:pointer}
+  .rowlink:hover{background:#fafbff}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1>Job Applicator</h1>
+    <p class="sub">UX Spec · v2 · mockup</p>
+    <nav id="nav">
+      <button data-view="dash" class="active"><span class="dot"></span>Dashboard</button>
+      <button data-view="single"><span class="dot"></span>Single JD</button>
+      <button data-view="inputs"><span class="dot"></span>Inputs &amp; CVs</button>
+      <button data-view="boards"><span class="dot"></span>Boards</button>
+      <button data-view="shortlist"><span class="dot"></span>Shortlist</button>
+      <button data-view="tracker"><span class="dot"></span>Tracker</button>
+    </nav>
+    <div class="foot">Static clickable mockup. Numbers illustrative. Review opens from Shortlist / Tracker rows.</div>
+  </aside>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section id="dash">
+      <div class="head">
+        <div><h2>Daily Dashboard</h2><p>Run: today 07:00 · prev run yesterday 07:00 · scope = Product Management</p></div>
+        <button class="btn">Run scan now</button>
+      </div>
+      <div class="grid kpis">
+        <div class="panel p kpi"><div class="n">142 <span class="new">23 NEW</span></div><div class="l">PM roles (total / new since last run)</div><div class="d up">▲ 23 new</div></div>
+        <div class="panel p kpi"><div class="n">31</div><div class="l">Passed score ≥ 70</div><div class="d up">9 of them new</div></div>
+        <div class="panel p kpi"><div class="n">10</div><div class="l">Shortlisted (5+5)</div><div class="d muted">3 drafts ready</div></div>
+        <div class="panel p kpi"><div class="n">10</div><div class="l">Manual boards</div><div class="d warn">checked by hand</div></div>
+      </div>
+
+      <div class="section-t">Board health — coverage by access method</div>
+      <div class="panel p">
+        <div class="legend">
+          <span><span class="chip c-api">API / feed</span> reliable</span>
+          <span><span class="chip c-browser">Browser-assisted</span> filtered, then index matches only</span>
+          <span><span class="chip c-manual">Manual</span> no automation path</span>
+        </div>
+        <table style="margin-top:10px">
+          <thead><tr><th>Access method</th><th>Boards</th><th>PM matches (24h)</th><th>New</th><th>Last run</th></tr></thead>
+          <tbody>
+            <tr><td><span class="chip c-api">API / feed</span></td><td>9</td><td>54</td><td>12</td><td><span class="status-pill st-ok">8 OK</span> <span class="status-pill st-stale">1 stale</span></td></tr>
+            <tr><td><span class="chip c-browser">Browser-assisted</span></td><td>10</td><td>71</td><td>9</td><td><span class="status-pill st-ok">8 OK</span> <span class="status-pill st-failed">1 failed</span> <span class="status-pill st-stale">1 stale</span></td></tr>
+            <tr><td><span class="chip c-manual">Manual</span></td><td>10</td><td>17 (logged)</td><td>2</td><td><span class="status-pill st-na">n/a — by hand</span></td></tr>
+          </tbody>
+        </table>
+        <div class="note">Full-site scraping removed. Browser-assisted = apply the board's own filters (PM role + remote / UK-hybrid geo), then index only the matching rows — never the whole site.</div>
+      </div>
+
+      <div class="section-t">Today's top matches <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">· NEW = unseen since last run</span></div>
+      <div class="panel p">
+        <table>
+          <thead><tr><th>Score</th><th>Role</th><th>Company</th><th>Posted</th><th>Mode</th><th>Board</th><th>Base CV</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td class="score s-hi">91</td><td>Founding PM <span class="new">NEW</span></td><td>Ledgerline</td><td>Jun 7</td><td><span class="mode m-remote">Remote</span></td><td>Web3Career</td><td><span class="chip c-crypto">Crypto PM</span></td><td><span class="status-pill st-review">in review</span></td></tr>
+            <tr><td class="score s-hi">88</td><td>VP Product <span class="new">NEW</span></td><td>Northwind</td><td>Jun 8</td><td><span class="mode m-hybrid">Hybrid UK</span></td><td>YCombinator</td><td><span class="chip c-cpo">CPO / VP</span></td><td><span class="status-pill st-review">in review</span></td></tr>
+            <tr><td class="score s-hi">84</td><td>Head of Product</td><td>Brightpay</td><td>Jun 4</td><td><span class="mode m-remote">Remote</span></td><td>Adzuna API</td><td><span class="chip c-cpo">CPO / VP</span></td><td><span class="status-pill st-review">in review</span></td></tr>
+            <tr><td class="score s-mid">79</td><td>Senior PM, Wallet</td><td>Chainmint</td><td>Jun 2</td><td><span class="mode m-remote">Remote</span></td><td>CryptocurrencyJobs</td><td><span class="chip c-crypto">Crypto PM</span></td><td><span class="status-pill st-draft">draft</span></td></tr>
+            <tr><td class="score s-mid">76</td><td>Founding PM <span class="new">NEW</span></td><td>Slate</td><td>Jun 8</td><td><span class="mode m-hybrid">Hybrid UK</span></td><td>RemoteOK</td><td><span class="chip c-founding">Founding PM</span></td><td><span class="status-pill st-none">not started</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SINGLE JD -->
+    <section id="single" class="hide">
+      <div class="head"><div><h2>Single JD pipeline</h2><p>Paste one job description. Same scoring → routing → drafting as the batch run, on demand.</p></div></div>
+      <div class="grid two">
+        <div class="panel p">
+          <div class="section-t" style="margin-top:0">Input</div>
+          <input type="text" id="jdUrl" placeholder="Job URL (optional, for the tracker link)" style="width:100%;margin-bottom:8px"/>
+          <textarea id="jdText" placeholder="Paste the full job description here…" style="width:100%;height:240px;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;resize:vertical;font-family:inherit"></textarea>
+          <div style="margin-top:10px"><button class="btn" onclick="runSingle()">Run pipeline</button> <button class="btn ghost" onclick="document.getElementById('jdText').value=''">Clear</button></div>
+          <div class="note">Pipeline: detect role + seniority + domain + geo → score → pick base CV → draft CV diff, cover letter, screening answers. Output appears on the right and is added to the Tracker.</div>
+        </div>
+        <div class="panel p" id="singleOut">
+          <div class="section-t" style="margin-top:0">Output</div>
+          <p class="muted" style="font-size:12.5px">Run the pipeline to see: detected attributes, score, routed base CV, and drafts. (Mock output in this prototype.)</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- INPUTS -->
+    <section id="inputs" class="hide">
+      <div class="head"><div><h2>Inputs &amp; CVs</h2><p>Source files the agent uses. Edit bases by hand; agent applies only per-job tweaks on top.</p></div></div>
+
+      <div class="section-t">Base CVs — 3 directions (full copies, you own them)</div>
+      <div class="grid three">
+        <div class="card-cv"><h4>Crypto PM <span class="chip c-crypto">crypto</span></h4><p class="muted">crypto-pm.docx · updated 3d ago</p><button class="btn ghost sm">Replace</button> <button class="btn ghost sm">Preview</button></div>
+        <div class="card-cv"><h4>CPO / VP Product <span class="chip c-cpo">cpo-vp</span></h4><p class="muted">cpo-vp.docx · updated 3d ago</p><button class="btn ghost sm">Replace</button> <button class="btn ghost sm">Preview</button></div>
+        <div class="card-cv"><h4>Founding PM <span class="chip c-founding">founding</span></h4><p class="muted">founding-pm.docx · updated 5d ago</p><button class="btn ghost sm">Replace</button> <button class="btn ghost sm">Preview</button></div>
+      </div>
+
+      <div class="grid two" style="margin-top:14px">
+        <div class="panel p">
+          <div class="section-t" style="margin-top:0">Routing rules — which base for which role</div>
+          <table>
+            <thead><tr><th>If role matches…</th><th>Use base</th></tr></thead>
+            <tbody>
+              <tr><td>crypto / web3 / blockchain / DeFi</td><td><span class="chip c-crypto">Crypto PM</span></td></tr>
+              <tr><td>Head of Product / VP / CPO / Director</td><td><span class="chip c-cpo">CPO / VP</span></td></tr>
+              <tr><td>founding / 0→1 / first PM / seed-stage</td><td><span class="chip c-founding">Founding PM</span></td></tr>
+              <tr><td class="muted">fallback</td><td><span class="chip c-cpo">CPO / VP</span></td></tr>
+            </tbody>
+          </table>
+          <div class="note">B2B/B2C is NOT a separate base — it's an emphasis axis applied at tailor time (see Review).</div>
+        </div>
+        <div class="panel p">
+          <div class="section-t" style="margin-top:0">Geo gate (browser-assisted boards)</div>
+          <div class="pill-row">
+            <span class="mode m-remote">Remote — non-US friendly</span>
+            <span class="mode m-hybrid">Hybrid — UK</span>
+            <span class="mode m-onsite" style="opacity:.5;text-decoration:line-through">Onsite</span>
+          </div>
+          <div class="note">Applied as the board's own filter before indexing. Rows failing geo are dropped, not stored.</div>
+          <div class="section-t">Supporting inputs</div>
+          <div class="upload">⬆ Drop screening-answer bank, profile, voice sample</div>
+        </div>
+      </div>
+
+      <div class="section-t">PM-focus filter</div>
+      <div class="panel p">
+        <div class="pill-row">
+          <span class="chip c-cpo">Product Manager</span><span class="chip c-cpo">Senior PM</span><span class="chip c-cpo">Head of Product</span>
+          <span class="chip c-cpo">VP Product</span><span class="chip c-cpo">CPO</span><span class="chip c-cpo">Founding PM</span><span class="chip c-cpo">Director Product</span>
+        </div>
+        <div class="note">Exclude: Project Manager, Program Manager, Product Marketing, Associate PM.</div>
+      </div>
+    </section>
+
+    <!-- BOARDS -->
+    <section id="boards" class="hide">
+      <div class="head"><div><h2>Boards</h2><p>29 active sources · 3 access tiers · PM + geo filtered counters</p></div><button class="btn ghost">+ Add board</button></div>
+      <div class="banner">No full-site scraping. Browser-assisted boards apply native filters (PM role + remote/UK-hybrid) and index only matching rows. Sites with no usable filter path stay manual.</div>
+      <div class="toolbar">
+        <input type="text" placeholder="Filter boards…" style="flex:1;min-width:160px"/>
+        <select><option>All methods</option><option>API / feed</option><option>Browser-assisted</option><option>Manual</option></select>
+        <select><option>All regions</option><option>Remote</option><option>UK</option><option>EU</option><option>MENA</option></select>
+      </div>
+      <div class="panel p">
+        <table>
+          <thead><tr><th>Board</th><th>Method</th><th>Region</th><th>PM open (24h)</th><th>New</th><th>Avg match</th><th>Last run</th></tr></thead>
+          <tbody id="boardRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SHORTLIST -->
+    <section id="shortlist" class="hide">
+      <div class="head"><div><h2>Shortlist</h2><p>Scored output · Top 5 · Runner-ups · Considered · trigger drafting per role</p></div>
+        <div class="tabs2"><button class="on">All</button><button>Crypto</button><button>CPO/VP</button><button>Founding</button></div>
+      </div>
+
+      <div class="section-t">Top 5</div>
+      <div class="panel p"><table><thead><tr><th>#</th><th>Score</th><th>Role / Company</th><th>Posted</th><th>Mode</th><th>Base</th><th>Links &amp; actions</th></tr></thead>
+        <tbody id="topRows"></tbody></table></div>
+
+      <div class="section-t">Runner-ups (6–10)</div>
+      <div class="panel p"><table><tbody id="runRows"></tbody></table></div>
+
+      <div class="section-t">Also considered (21 more, below threshold)</div>
+      <div class="panel p"><table><tbody>
+        <tr><td><span class="rank r-con">·</span></td><td class="score s-lo">62</td><td>Product Manager, Growth — Tinsel</td><td class="muted">Jun 5</td><td><span class="mode m-remote">Remote</span></td><td class="muted">seniority too junior</td><td><a class="jd" href="#" onclick="return false">JD ↗</a></td></tr>
+        <tr><td><span class="rank r-con">·</span></td><td class="score s-lo">58</td><td>PM, Internal Tools — Orbit</td><td class="muted">Jun 3</td><td><span class="mode m-onsite">Onsite</span></td><td class="muted">geo + domain fail</td><td><a class="jd" href="#" onclick="return false">JD ↗</a></td></tr>
+        <tr><td colspan="7" class="muted" style="text-align:center">+ 19 more · expand</td></tr>
+      </tbody></table></div>
+    </section>
+
+    <!-- REVIEW (dedicated page, reached via row click) -->
+    <section id="review" class="hide">
+      <div class="crumb"><a onclick="go('tracker')">Tracker</a> › <a onclick="go('shortlist')">Shortlist</a> › <span id="rwTitle">Founding PM — Ledgerline</span></div>
+      <div class="head"><div><h2 id="rwH">Founding PM — Ledgerline</h2><p>Score 91 · Web3Career · base = Crypto PM · <a class="jd" href="#" onclick="return false">Open JD ↗</a></p></div>
+        <div><button class="btn ghost" onclick="go('shortlist')">← Back</button> <button class="btn ghost">Reject</button> <button class="btn">Approve all</button></div>
+      </div>
+
+      <div class="muted" style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">In progress — switch between applications</div>
+      <div class="queue">
+        <div class="q active"><b>Ledgerline</b>Founding PM · 91</div>
+        <div class="q"><b>Northwind</b>VP Product · 88</div>
+        <div class="q"><b>Brightpay</b>Head of Product · 84</div>
+      </div>
+
+      <div class="tabs2">
+        <button class="on" onclick="rtab(event,'r-cv')">CV (base + adaptations)</button>
+        <button onclick="rtab(event,'r-cl')">Cover letter</button>
+        <button onclick="rtab(event,'r-sq')">Screening answers</button>
+        <button onclick="rtab(event,'r-why')">Reasoning</button>
+      </div>
+
+      <div id="r-cv" class="panel p">
+        <div class="muted" style="margin-bottom:8px">Base: <span class="chip c-crypto">Crypto PM</span> · adaptations as diff. Bases edited by hand; only these tweaks auto-applied.</div>
+        <div style="background:#f8f9fb;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:600;margin-bottom:4px">B2B / B2C emphasis — this role reads <b>B2C</b></div>
+          <div class="balance"><span style="font-size:11px;color:#1d4ed8">B2B</span><div class="track"><span class="knob" style="left:68%"></span></div><span style="font-size:11px;color:#16a34a">B2C</span></div>
+          <div class="tabs2" style="margin:8px 0 0"><button onclick="return false">Lean B2B</button><button class="on" onclick="return false">Auto (B2C)</button><button onclick="return false">Balanced</button></div>
+          <div class="note">Consumer-growth bullets surfaced first; one B2B bullet kept for range. Override anytime.</div>
+        </div>
+        <div class="diff" style="font-size:13px;line-height:1.7">
+          <p><strong>Headline:</strong> <del>Product leader in crypto &amp; fintech</del> <ins>Founding Product Manager — 0→1 consumer crypto</ins></p>
+          <p><strong>Summary:</strong> Shipped wallet &amp; DeFi features at scale. <ins>Built first product function at two seed-stage startups.</ins></p>
+          <p><strong>Bullet reorder:</strong> moved <ins>"0→40k users in 6mo"</ins> (B2C) above enterprise bullets.</p>
+          <p><strong>Keywords injected (JD):</strong> <ins>token design, community-led growth, EVM</ins></p>
+        </div>
+        <div class="note">4 changes from base. <button class="btn ghost sm">Accept all</button> <button class="btn ghost sm">Edit</button></div>
+      </div>
+
+      <div id="r-cl" class="panel p hide">
+        <p style="font-size:13px;line-height:1.7">Dear Ledgerline team,<br><br>Your wallet roadmap maps directly to what I built at Chainmint — <strong>0→40k users in six months</strong> on a non-custodial wallet…<br><br><span class="muted">[full draft · editable]</span></p>
+        <div class="reason"><strong>Angle:</strong> lead with 0→1 consumer proof. Hook from their June launch post.</div>
+      </div>
+
+      <div id="r-sq" class="panel p hide">
+        <table><thead><tr><th>Webform question</th><th>Drafted answer</th><th>Source</th></tr></thead><tbody>
+          <tr><td>Why this company?</td><td class="muted">Tied to their token-incentive model…</td><td><span class="chip c-api">tailored</span></td></tr>
+          <tr><td>Salary expectation</td><td class="muted">£140–165k + equity</td><td><span class="chip c-manual">profile</span></td></tr>
+          <tr><td>Work authorization</td><td class="muted">[from profile]</td><td><span class="chip c-manual">profile</span></td></tr>
+          <tr><td>Notice period</td><td class="muted">4 weeks</td><td><span class="chip c-manual">profile</span></td></tr>
+        </tbody></table>
+      </div>
+
+      <div id="r-why" class="panel p hide">
+        <div class="reason">
+          <strong>Score 91:</strong> domain 25/25 · seniority/scope 18/20 · stage 20/20 · comp 14/15 · geo (remote) 10/10 · recency 4/10.<br><br>
+          <strong>Base chosen:</strong> Crypto PM — crypto/web3 keywords matched before founding (priority rule).<br>
+          <strong>B2B/B2C:</strong> JD reads consumer wallet → B2C lean; consumer bullets first, one B2B kept for range.<br>
+          <strong>Risk flags:</strong> equity-heavy comp; verify cash band before applying.
+        </div>
+      </div>
+    </section>
+
+    <!-- TRACKER -->
+    <section id="tracker" class="hide">
+      <div class="head"><div><h2>Tracker</h2><p>Backed by local applications.csv · click a row to open its review page</p></div><button class="btn ghost">Export CSV</button></div>
+      <div class="panel p">
+        <table>
+          <thead><tr><th>Date</th><th>Role</th><th>Company</th><th>Posted</th><th>Mode</th><th>Board</th><th>Score</th><th>Base</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr class="rowlink" onclick="openReview('Founding PM','Ledgerline')"><td>06-08</td><td>Founding PM</td><td>Ledgerline</td><td>Jun 7</td><td><span class="mode m-remote">Remote</span></td><td>Web3Career</td><td class="score s-hi">91</td><td><span class="chip c-crypto">Crypto</span></td><td><span class="status-pill st-review">in review</span></td></tr>
+            <tr class="rowlink" onclick="openReview('VP Product','Northwind')"><td>06-08</td><td>VP Product</td><td>Northwind</td><td>Jun 8</td><td><span class="mode m-hybrid">Hybrid UK</span></td><td>YCombinator</td><td class="score s-hi">88</td><td><span class="chip c-cpo">CPO/VP</span></td><td><span class="status-pill st-review">in review</span></td></tr>
+            <tr class="rowlink" onclick="openReview('Head of Product','Brightpay')"><td>06-07</td><td>Head of Product</td><td>Brightpay</td><td>Jun 4</td><td><span class="mode m-remote">Remote</span></td><td>Adzuna</td><td class="score s-hi">84</td><td><span class="chip c-cpo">CPO/VP</span></td><td><span class="status-pill st-review">in review</span></td></tr>
+            <tr class="rowlink" onclick="openReview('Senior PM','Chainmint')"><td>06-07</td><td>Senior PM</td><td>Chainmint</td><td>Jun 2</td><td><span class="mode m-remote">Remote</span></td><td>CryptoJobs</td><td class="score s-mid">79</td><td><span class="chip c-crypto">Crypto</span></td><td><span class="status-pill st-skip">skipped</span></td></tr>
+            <tr class="rowlink" onclick="openReview('Founding PM','Slate')"><td>06-06</td><td>Founding PM</td><td>Slate</td><td>Jun 8</td><td><span class="mode m-hybrid">Hybrid UK</span></td><td>RemoteOK</td><td class="score s-mid">76</td><td><span class="chip c-founding">Founding</span></td><td><span class="status-pill st-applied">applied (manual)</span></td></tr>
+          </tbody>
+        </table>
+        <div class="note">Multiple applications sit "in review" at once. "Applied" stays manual until you opt into assisted submit (ToS + ban risk).</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+  // Boards: [name, method, region, pmOpen, new, avg, lastRun]
+  const boards = [
+    ["Web3Career","api","Remote",9,3,82,"ok"],["Adzuna","api","Global",14,4,71,"ok"],["RemoteOK","api","Remote",7,2,69,"ok"],
+    ["WeWorkRemotely","api","Remote",6,1,66,"ok"],["Remotive","api","Remote",5,1,64,"ok"],["Jooble","api","Global",11,1,58,"ok"],
+    ["CryptocurrencyJobs","api","Remote",8,3,77,"ok"],["ai-jobs.net","api","Remote",4,1,61,"ok"],["WorkingNomads","api","Remote",3,0,60,"stale"],
+    ["Otta / Welcome","browser","UK/EU",6,2,72,"ok"],["YCombinator","browser","Global",9,2,80,"ok"],["Indeed","browser","Global",22,3,55,"ok"],
+    ["Glassdoor","browser","Global",13,1,54,"failed"],["LinkedIn","browser","Global",18,3,63,"ok"],["FlexJobs","browser","Remote",4,0,57,"ok"],
+    ["TechInAsia","browser","APAC",6,1,59,"ok"],["SimplyHired","browser","Global",8,1,52,"ok"],["CareerJet","browser","Global",9,1,53,"stale"],
+    ["Himalayas","browser","Remote",5,1,65,"ok"],["EU Startups","browser","EU",4,1,58,"ok"],
+    ["Monster","manual","Global",7,1,49,"manual"],["CareerBuilder","manual","US",5,0,48,"manual"],["GulfTalent","manual","MENA",3,0,50,"manual"],
+    ["Naukri","manual","India",5,1,47,"manual"],["Dubizzle","manual","MENA",2,0,44,"manual"],["EdArabia","manual","MENA",1,0,42,"manual"],
+    ["TheHub.io","manual","EU",3,0,58,"manual"],["MediaBistro","manual","US",1,0,40,"manual"],["GameJobs","manual","Global",1,0,41,"manual"]
+  ];
+  const cls={api:"c-api",browser:"c-browser",manual:"c-manual"};
+  const lbl={api:"API / feed",browser:"Browser-assisted",manual:"Manual"};
+  const run={ok:'<span class="status-pill st-ok">OK</span>',failed:'<span class="status-pill st-failed">Failed</span>',stale:'<span class="status-pill st-stale">Stale</span>',manual:'<span class="status-pill st-na">n/a — by hand</span>'};
+  document.getElementById("boardRows").innerHTML = boards.map(b=>{
+    const s = b[5]>=70?"s-hi":b[5]>=55?"s-mid":"s-lo";
+    const nw = b[4]>0?`<span class="new">${b[4]}</span>`:'<span class="muted">0</span>';
+    return `<tr><td>${b[0]}</td><td><span class="chip ${cls[b[1]]}">${lbl[b[1]]}</span></td><td class="muted">${b[2]}</td><td>${b[3]}</td><td>${nw}</td><td class="score ${s}">${b[5]}</td><td>${run[b[6]]}</td></tr>`;
+  }).join("");
+
+  // Shortlist data: [rank,score,role,company,posted,mode,base,drafted,isNew]
+  const topJobs=[
+    [1,91,"Founding Product Manager","Ledgerline","Jun 7","remote","crypto",true,true],
+    [2,88,"VP Product","Northwind","Jun 8","hybrid","cpo",true,true],
+    [3,84,"Head of Product","Brightpay","Jun 4","remote","cpo",true,false],
+    [4,79,"Senior PM, Wallet","Chainmint","Jun 2","remote","crypto",false,false],
+    [5,76,"Founding PM","Slate","Jun 8","hybrid","founding",false,true],
+  ];
+  const runJobs=[
+    [6,74,"Group PM","Vela","Jun 6","remote","cpo",false,false],
+    [7,72,"Lead PM, Payments","Arcus","Jun 5","remote","crypto",false,false],
+    [8,71,"Director of Product","Hatch","Jun 3","hybrid","cpo",false,false],
+    [9,70,"Founding PM","Quanta","Jun 7","remote","founding",false,true],
+    [10,70,"Senior PM","Driftwood","Jun 4","onsite","cpo",false,false],
+  ];
+  const modeCls={remote:"m-remote",hybrid:"m-hybrid",onsite:"m-onsite"};
+  const modeLbl={remote:"Remote",hybrid:"Hybrid UK",onsite:"Onsite"};
+  const baseChip={crypto:'<span class="chip c-crypto">Crypto PM</span>',cpo:'<span class="chip c-cpo">CPO / VP</span>',founding:'<span class="chip c-founding">Founding PM</span>'};
+  function rowHtml(r,rankCls){
+    const s=r[1]>=80?"s-hi":r[1]>=70?"s-mid":"s-lo";
+    const act = r[7]
+      ? `<button class="btn sm" onclick="openReview('${r[2]}','${r[3]}')">Review</button>`
+      : `<button class="btn sm" onclick="this.textContent='Drafting…'">Draft documents</button>`;
+    const nw = r[8]?'<span class="new">NEW</span>':'';
+    return `<tr><td><span class="rank ${rankCls}">${r[0]}</span></td><td class="score ${s}">${r[1]}</td>
+      <td>${r[2]} ${nw}<div class="sub2">${r[3]}</div></td>
+      <td class="muted">${r[4]}</td><td><span class="mode ${modeCls[r[5]]}">${modeLbl[r[5]]}</span></td>
+      <td>${baseChip[r[6]]}</td>
+      <td><a class="jd" href="#" onclick="return false">JD ↗</a> &nbsp; ${act}</td></tr>`;
+  }
+  document.getElementById("topRows").innerHTML = topJobs.map(r=>rowHtml(r,"r-top")).join("");
+  document.getElementById("runRows").innerHTML = runJobs.map(r=>rowHtml(r,"r-run")).join("");
+
+  const views=["dash","single","inputs","boards","shortlist","tracker","review"];
+  function go(v){
+    views.forEach(x=>document.getElementById(x).classList.toggle("hide",x!==v));
+    document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===v));
+    window.scrollTo(0,0);
+  }
+  function openReview(role,company){
+    document.getElementById("rwTitle").textContent = role+" — "+company;
+    document.getElementById("rwH").textContent = role+" — "+company;
+    go("review");
+  }
+  document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>go(b.dataset.view));
+  function runSingle(){
+    const txt=(document.getElementById("jdText").value||"").toLowerCase();
+    const url=document.getElementById("jdUrl").value||"#";
+    // toy detection just to show the flow
+    let base="cpo",baseLbl="CPO / VP";
+    if(/crypto|web3|blockchain|defi|token|wallet/.test(txt)){base="crypto";baseLbl="Crypto PM";}
+    else if(/founding|0\s*[-→to]+\s*1|first product|seed/.test(txt)){base="founding";baseLbl="Founding PM";}
+    let geo="Remote",geoCls="m-remote";
+    if(/hybrid/.test(txt)){geo="Hybrid";geoCls="m-hybrid";}
+    else if(/on[-\s]?site|in office/.test(txt)){geo="Onsite";geoCls="m-onsite";}
+    const lean=/enterprise|b2b|saas|sales-led/.test(txt)?"B2B":"B2C";
+    const score = txt.length>40 ? 60+Math.min(34,Math.floor(txt.length/40)) : 0;
+    const s=score>=80?"s-hi":score>=70?"s-mid":"s-lo";
+    document.getElementById("singleOut").innerHTML = score===0
+      ? '<div class="section-t" style="margin-top:0">Output</div><p class="bad" style="font-size:13px">Paste a longer job description to run.</p>'
+      : `<div class="section-t" style="margin-top:0">Output</div>
+        <div class="grid kpis" style="grid-template-columns:1fr 1fr">
+          <div class="panel p kpi"><div class="n score ${s}">${score}</div><div class="l">Match score</div></div>
+          <div class="panel p kpi"><div class="n">${baseChip[base]}</div><div class="l">Routed base CV</div></div>
+        </div>
+        <div class="reason" style="margin-top:12px">
+          <strong>Detected:</strong> base = ${baseLbl} · geo = <span class="mode ${geoCls}">${geo}</span> · lean = ${lean}<br>
+          <strong>Drafts generated:</strong> CV (diff from ${baseLbl}), cover letter, screening answers.<br>
+          <a class="jd" href="${url}" onclick="return false">Open JD ↗</a> · added to Tracker as "in review".
+        </div>
+        <div class="diff" style="font-size:13px;line-height:1.7;margin-top:10px">
+          <p><strong>Headline:</strong> <ins>tailored to this role's keywords (${lean} lean)</ins></p>
+          <p><strong>Cover letter:</strong> <ins>angle drafted from JD specifics</ins></p>
+        </div>
+        <div style="margin-top:10px"><button class="btn" onclick="openReview('Pasted role','this JD')">Open full review</button></div>`;
+  }
+  function rtab(e,id){
+    ["r-cv","r-cl","r-sq","r-why"].forEach(x=>document.getElementById(x).classList.toggle("hide",x!==id));
+    e.target.parentNode.querySelectorAll("button").forEach(x=>x.classList.remove("on"));
+    e.target.classList.add("on");
+  }
+</script>
+</body>
+</html>

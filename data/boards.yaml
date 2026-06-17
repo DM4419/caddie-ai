@@ -1,0 +1,1694 @@
+# Job boards. tier: api | browser | ats | manual
+# 'ats' boards carry {provider, slug} and are scanned by adapters/ats.py.
+# Boards added via the UI are marked custom: true.
+
+boards:
+- name: RemoteOK
+  tier: api
+  region: remote
+  url: https://remoteok.com/
+  endpoint: https://remoteok.com/api
+  auth: none
+  enabled: true
+  note: Public JSON feed (verified reachable, ~100 jobs/call).
+- name: Working Nomads
+  tier: api
+  region: remote
+  url: https://www.workingnomads.com/jobs
+  endpoint: https://www.workingnomads.com/api/exposed_jobs/
+  auth: none
+  enabled: true
+  note: Public JSON feed (verified reachable).
+- name: Adzuna
+  tier: api
+  region: global
+  url: https://www.adzuna.com/
+  endpoint: https://api.adzuna.com/v1/api/jobs
+  auth: api_key
+  enabled: true
+  note: Live (GB). Searches "product manager" by default; API returns description
+    snippets only.
+- name: Web3 Career
+  tier: api
+  region: remote
+  url: https://web3.career/
+  endpoint: https://web3.career/api/v1
+  auth: token
+  enabled: true
+  note: Live. Token in .env; supports remote filter + real pagination.
+- name: Cryptocurrency Jobs
+  tier: browser
+  region: remote
+  url: https://cryptocurrencyjobs.co/product/
+  endpoint: https://cryptocurrencyjobs.co/product/
+  auth: none
+  enabled: true
+  note: HTML scrape of the /product/ category (no API). Card-level data; crypto/web3
+    roles.
+- name: Product Builder Jobs
+  tier: browser
+  region: remote
+  url: https://productbuilderjobs.vercel.app/
+  endpoint: https://productbuilderjobs.vercel.app/
+  auth: none
+  enabled: true
+  note: React SPA backed by Supabase — needs the browser tier (or its Supabase endpoint)
+    to index.
+- name: Joblift
+  tier: browser
+  region: ''
+  url: https://joblift.co.uk/Jobs-for-head%20of%20product
+  search_template: https://joblift.co.uk/Jobs-for-{q}
+  auth: none
+  enabled: true
+  custom: true
+  note: Browser tier — renders the search with Playwright (rate-limited), fans out
+    over your role queries. Won't defeat heavy bot walls (e.g. Glassdoor).
+- name: Weworkremotely
+  tier: browser
+  region: ''
+  url: https://weworkremotely.com/categories/remote-product-jobs
+  search_template: ''
+  search_sep: ''
+  auth: none
+  enabled: true
+  custom: true
+  note: Browser tier — renders the search with Playwright (rate-limited), scrapes
+    this one URL. Won't defeat heavy bot walls (e.g. Glassdoor).
+- name: Berlinstartupjobs
+  tier: browser
+  region: ''
+  url: https://berlinstartupjobs.com/product-management/
+  search_template: ''
+  search_sep: ''
+  auth: none
+  enabled: true
+  custom: true
+  note: Browser tier — renders the search with Playwright (rate-limited), scrapes
+    this one URL. Won't defeat heavy bot walls (e.g. Glassdoor).
+- name: Bayt
+  tier: browser
+  region: ''
+  url: https://www.bayt.com/en/international/jobs/head-of-product-jobs/
+  search_template: https://www.bayt.com/en/international/jobs/{q}-jobs/
+  search_sep: '-'
+  auth: none
+  enabled: true
+  custom: true
+  note: Browser tier — renders the search with Playwright (rate-limited), fans out
+    over your role queries. Won't defeat heavy bot walls (e.g. Glassdoor).
+- name: Remote
+  tier: browser
+  region: ''
+  url: https://remote.com/jobs/all?query=lead+product+manager&employmentType=full_time
+  search_template: https://remote.com/jobs/all?query={q}&employmentType=full_time
+  search_sep: +
+  auth: none
+  enabled: true
+  custom: true
+  note: Browser tier — renders the search with Playwright (rate-limited), fans out
+    over your role queries. Won't defeat heavy bot walls (e.g. Glassdoor).
+- name: Reed
+  tier: listing
+  region: ''
+  url: https://www.reed.co.uk/jobs/head-of-product-jobs?fullTime=true
+  search_template: https://www.reed.co.uk/jobs/{q}-jobs?fullTime=true
+  search_sep: '-'
+  auth: none
+  enabled: true
+  custom: true
+  note: Listing board — fast static fetch, fans out over your role queries.
+  pages: 8
+- name: Workinstartups
+  tier: browser
+  region: ''
+  url: https://workinstartups.com/search?q=product&w=UK
+  search_template: ''
+  search_sep: ''
+  auth: none
+  enabled: true
+  custom: true
+  note: Browser tier — renders the search with Playwright (rate-limited), scrapes
+    this one URL. Won't defeat heavy bot walls (e.g. Glassdoor).
+- name: Mistral AI
+  tier: ats
+  region: global
+  url: https://jobs.lever.co/mistral
+  provider: lever
+  slug: mistral
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Lever board. Voice-AI / AI company focused on AI / voice AI.
+- name: ElevenLabs
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/elevenlabs
+  provider: ashby
+  slug: elevenlabs
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Helsing
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/helsing
+  provider: greenhouse
+  slug: helsing
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+- name: Sierra
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/sierra
+  provider: ashby
+  slug: sierra
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Cohere
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/cohere
+  provider: ashby
+  slug: cohere
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Wayve
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/wayve
+  provider: greenhouse
+  slug: wayve
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+- name: Decagon
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/decagon
+  provider: ashby
+  slug: decagon
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: LangChain
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/langchain
+  provider: ashby
+  slug: langchain
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Cresta
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/cresta
+  provider: greenhouse
+  slug: cresta
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+- name: Aircall
+  tier: ats
+  region: global
+  url: https://jobs.lever.co/aircall
+  provider: lever
+  slug: aircall
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Lever board. Voice-AI / AI company focused on AI / voice AI.
+- name: Synthesia
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/synthesia
+  provider: ashby
+  slug: synthesia
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Deepgram
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/deepgram
+  provider: ashby
+  slug: deepgram
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Lovable
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/lovable
+  provider: greenhouse
+  slug: lovable
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+- name: Parloa
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/parloa
+  provider: greenhouse
+  slug: parloa
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+- name: n8n
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/n8n
+  provider: ashby
+  slug: n8n
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Cartesia
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/cartesia
+  provider: ashby
+  slug: cartesia
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: H Company
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/hcompany
+  provider: ashby
+  slug: hcompany
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Vapi
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/vapi
+  provider: ashby
+  slug: vapi
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Dust
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/dust
+  provider: ashby
+  slug: dust
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: DeepL
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/deepl
+  provider: ashby
+  slug: deepl
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: LiveKit
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/livekit
+  provider: ashby
+  slug: livekit
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Retell AI
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/retell-ai
+  provider: ashby
+  slug: retell-ai
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: HeyGen
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/heygen
+  provider: greenhouse
+  slug: heygen
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+- name: Speechmatics
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/speechmatics
+  provider: greenhouse
+  slug: speechmatics
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+- name: Poolside
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/poolside
+  provider: ashby
+  slug: poolside
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Granola
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/granola
+  provider: ashby
+  slug: granola
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Black Forest Labs
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/blackforestlabs
+  provider: greenhouse
+  slug: blackforestlabs
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+- name: PolyAI
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/polyai
+  provider: greenhouse
+  slug: polyai
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+- name: Nabla
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/nabla
+  provider: ashby
+  slug: nabla
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Bland AI
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/bland
+  provider: ashby
+  slug: bland
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Rime
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/rime
+  provider: ashby
+  slug: rime
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Synthflow
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/synthflow
+  provider: ashby
+  slug: synthflow
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Aleph Alpha
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/alephalpha
+  provider: ashby
+  slug: alephalpha
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Tavus
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/tavus
+  provider: ashby
+  slug: tavus
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Pinecone
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/pinecone
+  provider: ashby
+  slug: pinecone
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Stability AI
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/stabilityai
+  provider: greenhouse
+  slug: stabilityai
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+- name: Weaviate
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/weaviate
+  provider: ashby
+  slug: weaviate
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Builder.ai
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/builder
+  provider: greenhouse
+  slug: builder
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+- name: Nous Research
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/nous
+  provider: ashby
+  slug: nous
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Phonic
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/phonic
+  provider: ashby
+  slug: phonic
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Hume AI
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/humeai
+  provider: greenhouse
+  slug: humeai
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+- name: Smallest AI
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/smallest
+  provider: ashby
+  slug: smallest
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Continue
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/continue
+  provider: ashby
+  slug: continue
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Lindy
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/lindy
+  provider: ashby
+  slug: lindy
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+- name: Harvey
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/harvey
+  provider: ashby
+  slug: harvey
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Graphcore
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/graphcore
+  provider: greenhouse
+  slug: graphcore
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: AlphaSense
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/alphasense
+  provider: greenhouse
+  slug: alphasense
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Doctolib
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/doctolib
+  provider: greenhouse
+  slug: doctolib
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Celonis
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/celonis
+  provider: greenhouse
+  slug: celonis
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Legora
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/legora
+  provider: ashby
+  slug: legora
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Cursor
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/cursor
+  provider: ashby
+  slug: cursor
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Replit
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/replit
+  provider: ashby
+  slug: replit
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Pigment
+  tier: ats
+  region: global
+  url: https://jobs.lever.co/pigment
+  provider: lever
+  slug: pigment
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Lever board (AI / voice / deployment; EU-remote monitoring).
+- name: Alan
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/alan
+  provider: ashby
+  slug: alan
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Dialpad
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/dialpad
+  provider: greenhouse
+  slug: dialpad
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Faculty
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/faculty
+  provider: ashby
+  slug: faculty
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Baseten
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/baseten
+  provider: ashby
+  slug: baseten
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Abridge
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/abridge
+  provider: ashby
+  slug: abridge
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Dataiku
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/dataiku
+  provider: greenhouse
+  slug: dataiku
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Together AI
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/togetherai
+  provider: greenhouse
+  slug: togetherai
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Peak
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/peak
+  provider: greenhouse
+  slug: peak
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: HumanSignal
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/humansignal
+  provider: greenhouse
+  slug: humansignal
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Bird
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/bird
+  provider: greenhouse
+  slug: bird
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Arize AI
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/arizeai
+  provider: greenhouse
+  slug: arizeai
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Taktile
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/taktile
+  provider: ashby
+  slug: taktile
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Contentsquare
+  tier: ats
+  region: global
+  url: https://jobs.lever.co/contentsquare
+  provider: lever
+  slug: contentsquare
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Lever board (AI / voice / deployment; EU-remote monitoring).
+- name: Twelve Labs
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/twelve-labs
+  provider: ashby
+  slug: twelve-labs
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Multiverse
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/multiverse
+  provider: ashby
+  slug: multiverse
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Modal
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/modal
+  provider: ashby
+  slug: modal
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Mirakl
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/mirakl
+  provider: greenhouse
+  slug: mirakl
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Fireworks AI
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/fireworksai
+  provider: greenhouse
+  slug: fireworksai
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Prime Intellect
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/primeintellect
+  provider: ashby
+  slug: primeintellect
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Braintrust
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/braintrust
+  provider: ashby
+  slug: braintrust
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Quantexa
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/quantexa
+  provider: ashby
+  slug: quantexa
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Zeta Alpha
+  tier: ats
+  region: global
+  url: https://jobs.lever.co/zeta
+  provider: lever
+  slug: zeta
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Lever board (AI / voice / deployment; EU-remote monitoring).
+- name: Observe AI
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/observeai
+  provider: greenhouse
+  slug: observeai
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Pennylane
+  tier: ats
+  region: global
+  url: https://jobs.lever.co/pennylane
+  provider: lever
+  slug: pennylane
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Lever board (AI / voice / deployment; EU-remote monitoring).
+- name: Adaptive ML
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/adaptive-ml
+  provider: ashby
+  slug: adaptive-ml
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Krea
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/krea
+  provider: ashby
+  slug: krea
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Corti
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/corti
+  provider: ashby
+  slug: corti
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Make
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/make
+  provider: greenhouse
+  slug: make
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Photoroom
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/photoroom
+  provider: ashby
+  slug: photoroom
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Causaly
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/causaly
+  provider: ashby
+  slug: causaly
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Phonely
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/phonely
+  provider: ashby
+  slug: phonely
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Owkin
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/owkin
+  provider: ashby
+  slug: owkin
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Langfuse
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/langfuse
+  provider: ashby
+  slug: langfuse
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: StackBlitz
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/stackblitz
+  provider: greenhouse
+  slug: stackblitz
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Suki
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/suki
+  provider: greenhouse
+  slug: suki
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Galileo
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/galileo
+  provider: greenhouse
+  slug: galileo
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Relevance AI
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/relevanceai
+  provider: ashby
+  slug: relevanceai
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Eudia
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/eudia
+  provider: greenhouse
+  slug: eudia
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Robin AI
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/robin-ai
+  provider: ashby
+  slug: robin-ai
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Reka AI
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/reka
+  provider: ashby
+  slug: reka
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: AssemblyAI
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/assemblyai
+  provider: greenhouse
+  slug: assemblyai
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Replicant
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/replicant
+  provider: ashby
+  slug: replicant
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Descript
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/descript
+  provider: greenhouse
+  slug: descript
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Cleo
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/cleo
+  provider: greenhouse
+  slug: cleo
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Nomic AI
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/nomic
+  provider: ashby
+  slug: nomic
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Pika
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/pika
+  provider: ashby
+  slug: pika
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Runway
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/runway
+  provider: ashby
+  slug: runway
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Beamery
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/beamery
+  provider: ashby
+  slug: beamery
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Imbue
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/imbue
+  provider: greenhouse
+  slug: imbue
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Recraft
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/recraft
+  provider: ashby
+  slug: recraft
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Tractable
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/tractable
+  provider: ashby
+  slug: tractable
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Anyscale
+  tier: ats
+  region: global
+  url: https://jobs.lever.co/anyscale
+  provider: lever
+  slug: anyscale
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Lever board (AI / voice / deployment; EU-remote monitoring).
+- name: Vellum
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/vellum
+  provider: ashby
+  slug: vellum
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Ada Health
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/adahealth
+  provider: greenhouse
+  slug: adahealth
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Toma
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/toma
+  provider: ashby
+  slug: toma
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Gladia
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/gladia
+  provider: ashby
+  slug: gladia
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Contextual AI
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/contextualai
+  provider: greenhouse
+  slug: contextualai
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Magic
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/magic
+  provider: greenhouse
+  slug: magic
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (AI / voice / deployment; EU-remote monitoring).
+- name: Luma AI
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/lumaai
+  provider: ashby
+  slug: lumaai
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (AI / voice / deployment; EU-remote monitoring).
+- name: Signal AI
+  tier: ats
+  region: global
+  url: https://jobs.lever.co/signal
+  provider: lever
+  slug: signal
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Lever board (AI / voice / deployment; EU-remote monitoring).
+- name: Sereact
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/sereact
+  provider: ashby
+  slug: sereact
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (EU-remote AI monitoring).
+- name: Langdock
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/langdock
+  provider: ashby
+  slug: langdock
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (EU-remote AI monitoring).
+- name: Cradle Bio
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/cradlebio
+  provider: ashby
+  slug: cradlebio
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (EU-remote AI monitoring).
+- name: Rasa
+  tier: ats
+  region: global
+  url: https://jobs.ashbyhq.com/rasa
+  provider: ashby
+  slug: rasa
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Ashby board (EU-remote AI monitoring).
+- name: Glean
+  tier: ats
+  region: global
+  url: https://jobs.smartrecruiters.com/glean
+  provider: smartrecruiters
+  slug: glean
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Smartrecruiters board (EU-remote AI monitoring).
+- name: Kore ai
+  tier: ats
+  region: global
+  url: https://jobs.smartrecruiters.com/koreai
+  provider: smartrecruiters
+  slug: koreai
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Smartrecruiters board (EU-remote AI monitoring).
+- name: Personio
+  tier: ats
+  region: global
+  url: https://personio.recruitee.com
+  provider: recruitee
+  slug: personio
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Recruitee board (EU-remote AI monitoring).
+- name: Konux
+  tier: ats
+  region: global
+  url: https://boards.greenhouse.io/konux
+  provider: greenhouse
+  slug: konux
+  group: Companies
+  auth: none
+  enabled: true
+  custom: true
+  note: Direct employer — Greenhouse board (EU-remote AI monitoring).
+- name: Intelligent People
+  tier: listing
+  region: ''
+  url: https://www.intelligentpeople.co.uk/jobs/?_sf_s=head%20of%20product&_sft_job_discipline=product-management
+  search_template: https://www.intelligentpeople.co.uk/jobs/?_sf_s={q}&_sft_job_discipline=product-management
+  search_sep: '%20'
+  auth: none
+  enabled: true
+  custom: true
+  note: UK PM-specialist recruiter — listing board, fans out over role queries.
+  group: Recruiters
+- name: Simplyhired
+  tier: browser
+  region: ''
+  url: https://www.simplyhired.co.uk/search?q=product
+  search_template: ''
+  search_sep: ''
+  auth: none
+  enabled: true
+  custom: true
+  note: Browser tier — renders the search with Playwright (rate-limited), scrapes
+    this one URL. Won't defeat heavy bot walls (e.g. Glassdoor).
+- name: Salt
+  tier: listing
+  region: ''
+  url: https://www.welovesalt.com
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: La Fosse
+  tier: ats
+  region: ''
+  url: https://www.lafosse.com
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — ats board (PM-relevant; role gate filters to product roles).
+  provider: workable
+  slug: lafosse
+- name: Market Recruitment
+  tier: listing
+  region: ''
+  url: https://www.market-recruitment.co.uk/jobs
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: ADLIB
+  tier: listing
+  region: ''
+  url: https://www.adlib-recruitment.co.uk/job-search
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: Harnham
+  tier: listing
+  region: ''
+  url: https://www.harnham.com/jobs
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: Understanding Recruitment
+  tier: listing
+  region: ''
+  url: https://www.understandingrecruitment.co.uk
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: Eton Bridge Partners
+  tier: listing
+  region: ''
+  url: https://www.etonbridgepartners.com/search/jobs
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: Recruited
+  tier: listing
+  region: ''
+  url: https://www.recruited.tech/jobs
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: Live Digital
+  tier: listing
+  region: ''
+  url: https://live-digital.co.uk/jobs/
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: Erevena
+  tier: listing
+  region: ''
+  url: https://www.erevena.com
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: Marks Sattin
+  tier: listing
+  region: ''
+  url: https://www.markssattin.co.uk
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: Consortia
+  tier: listing
+  region: ''
+  url: https://www.consortia.com
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: GoGloby
+  tier: listing
+  region: ''
+  url: https://gogloby.com/jobs
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: Nigel Wright Group
+  tier: listing
+  region: ''
+  url: https://www.nigelwright.com
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: Trinnovo Group
+  tier: listing
+  region: ''
+  url: https://www.trinnovogroup.com
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: Third Republic
+  tier: listing
+  region: ''
+  url: https://www.thirdrepublic.com/search/jobs
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: Xcede
+  tier: listing
+  region: ''
+  url: https://www.xcede.com
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: Solis Recruitment
+  tier: listing
+  region: ''
+  url: https://www.solisrecruitment.com
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'
+- name: Burns Sheehan
+  tier: listing
+  region: ''
+  url: https://www.burnssheehan.co.uk
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
+  search_template: ''
+  search_sep: '%20'

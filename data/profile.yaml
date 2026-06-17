@@ -1,0 +1,133 @@
+# SAMPLE profile shipped with the repo so the app runs out of the box.
+# Edit this in the UI (Settings tab) or here. `candidate_summary` + your base
+# CV are what the AI scores roles against; `fit_rubric` is how it ranks them.
+# `weights` must sum to 100 (used for the secondary weighted score + no-AI fallback).
+
+weights:
+  remote: 30
+  skills: 30
+  domain: 30
+  stage: 10
+recency_days: 7
+
+fit_rubric: |
+  The candidate is a 0→1 product leader. Score each job 0-100 in TWO steps.
+
+  STEP 1 — SKILLS & QUALIFICATIONS MATCH (the dominant driver of the score).
+  Judge how specifically THIS role's stated requirements, responsibilities and
+  must-haves line up with the candidate's skill set AND the concrete achievements
+  in their CV. Reward specific, demonstrable overlap; penalise hard for
+  requirements the candidate clearly lacks (deep technical depth, a domain they've
+  never done, a scale they haven't operated at). A weak skills match CAPS the score
+  LOW no matter how attractive the tier; a strong, specific match pushes it high.
+
+  STEP 2 — ROLE-TYPE TIER. After the skills match sets the ceiling, place the role
+  in the best-matching tier; higher tiers earn the upper end of that ceiling.
+    TIER 1 (ideal): Remote-anywhere AND an early-stage, founder-led company building
+      0→1 products.
+    TIER 2 (great): Remote-anywhere at a larger company building B2B/AI products.
+    TIER 3: Head of Product, fully remote within Europe.
+    TIER 4: IC PM / Head of Product / VP Product, hybrid in a major hub.
+    TIER 5 (lowest): everything else that still passes the geo gate.
+
+  Onsite-only or a domain the candidate has no claim to should land low regardless
+  of tier. Never let seniority or an exciting stage rescue a poorly-qualified role.
+
+geo_gate:
+- remote
+- hybrid-uk
+- hybrid-eu
+- remote-eu
+exclude_us_onsite_hybrid: true
+
+languages:
+  spoken:
+  - english
+  boost: []
+  boost_points: 0
+  block_score_cap: 20
+
+candidate_summary: |
+  I build products from zero to launch and lead the teams that scale them.
+  10+ years taking products 0→1 across B2B SaaS, marketplaces and platforms,
+  best in early-stage startups leading small cross-functional teams hands-on.
+  Strengths: 0→1 launches, product discovery, prototyping, analytics, working in
+  regulated environments, product ops. Remote-first, EU.
+
+domains:
+- ai
+- artificial intelligence
+- llm
+- genai
+- machine learning
+- b2b saas
+- b2b2c
+- marketplace
+- platform
+- fintech
+- proptech
+
+skills:
+- 0 to 1
+- 0-1
+- discovery
+- prototyping
+- analytics
+- experimentation
+- a/b testing
+- product strategy
+- roadmap
+- prioritization
+- go-to-market
+- cross-functional
+- hands-on
+- product ops
+- user research
+- mvp
+- stakeholder
+
+stage_signals:
+- founding
+- first product
+- first pm
+- pre-seed
+- seed
+- series a
+- early-stage
+- early stage
+- greenfield
+- startup
+
+roles:
+- product manager
+- senior product manager
+- lead product manager
+- group product manager
+- principal product manager
+- head of product
+- director of product
+- product director
+- vp product
+- vp of product
+- chief product officer
+- cpo
+- founding pm
+- founding product manager
+
+roles_exclude:
+- product marketing
+- product marketer
+- marketing manager
+- growth marketing
+- technical program manager
+
+role_queries:
+  default:
+  - product manager
+  - senior product manager
+  - principal product manager
+  - lead product manager
+  - head of product
+  - director of product
+  - vp product
+  - founding product manager

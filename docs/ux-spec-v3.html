@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Job Applicator — UX Spec v3 (lean)</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#fff; --ink:#16191d; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#2f6df6; --green:#16a34a; --amber:#d97706; --red:#dc2626;
+    --radius:10px; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 12px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .app{display:grid;grid-template-columns:190px 1fr;min-height:100vh}
+  aside{background:#0f1115;color:#cbd2dc;padding:18px 14px;position:sticky;top:0;height:100vh}
+  aside h1{color:#fff;font-size:15px;margin:4px 6px 2px}
+  aside .sub{color:#7c8597;font-size:11px;margin:0 6px 18px}
+  nav button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;color:#cbd2dc;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px}
+  nav button:hover{background:#1a1d24;color:#fff}
+  nav button.active{background:var(--accent);color:#fff}
+  nav .dot{width:7px;height:7px;border-radius:50%;background:#3a4150}
+  nav button.active .dot{background:#fff}
+  aside .foot{position:absolute;bottom:14px;left:14px;right:14px;color:#5b6473;font-size:10px;line-height:1.4}
+  main{padding:24px 30px;max-width:980px}
+  .crumb{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .crumb a{color:var(--accent);text-decoration:none;cursor:pointer}
+  .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+  .head h2{margin:0;font-size:20px}
+  .head .meta{color:var(--muted);font-size:12.5px;margin-top:3px}
+  .btn{background:var(--accent);color:#fff;border:0;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn.sm{padding:5px 9px;font-size:12px}
+  .btn.ok{background:var(--green)} .btn.danger{background:#fff;color:var(--red);border:1px solid #f3c7c7}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .panel.p{padding:16px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:0}
+  .rowlink{cursor:pointer} .rowlink:hover{background:#fafbff}
+  .score{font-weight:700;font-size:15px}
+  .s-hi{color:var(--green)} .s-mid{color:var(--amber)} .s-lo{color:var(--muted)}
+  .sub2{font-size:11.5px;color:var(--muted);margin-top:1px}
+  .new{background:#fde68a;color:#92400e;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:6px;vertical-align:middle}
+  .mode{font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px}
+  .m-remote{background:#dcfce7;color:#166534}
+  .m-hybrid{background:#e0e7ff;color:#3730a3}
+  .m-onsite{background:#fee2e2;color:#991b1b}
+  .status-pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px}
+  .st-new{background:#fef3c7;color:#92400e}
+  .st-review{background:#dbeafe;color:#1e40af}
+  .st-approved{background:#dcfce7;color:#166534}
+  .st-applied{background:#e0e7ff;color:#3730a3}
+  .muted{color:var(--muted)}
+  .chip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+  .c-crypto{background:#efe7fb;color:#6d28d9}
+  .c-cpo{background:#e3eefb;color:#1d4ed8}
+  .c-founding{background:#e7f6ec;color:#157f3b}
+  .jd{color:var(--accent);text-decoration:none;font-weight:600}
+  .hide{display:none}
+  .linkbtn{background:none;border:0;color:var(--accent);font-size:12.5px;cursor:pointer;padding:8px 0}
+  /* review */
+  .tabs2{display:flex;gap:6px;margin:0 0 12px}
+  .tabs2 button{border:1px solid var(--line);background:#fff;padding:6px 12px;border-radius:8px;font-size:12.5px;cursor:pointer}
+  .tabs2 button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .doc{border:1px solid var(--line);border-radius:10px;padding:18px 20px;font-size:13.5px;line-height:1.75;min-height:240px;outline:none}
+  .doc:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,109,246,.12)}
+  mark.chg{background:#fff3cd;border-bottom:2px solid #f0c000;border-radius:3px;padding:0 2px;cursor:pointer}
+  mark.chg:hover{background:#ffe9a8}
+  .pop{position:absolute;z-index:50;background:#0f1115;color:#fff;border-radius:8px;padding:6px;display:flex;gap:6px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+  .pop button{border:0;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer}
+  .pop .keep{background:var(--green);color:#fff}
+  .pop .rev{background:#374151;color:#fff}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:8px}
+  .leanbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .whyline{font-size:12.5px;color:#33373d;background:#f8f9fb;border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 8px 8px 0;margin-bottom:14px}
+  .card-cv{padding:14px;border:1px dashed var(--line);border-radius:10px;background:#fafbfc}
+  .card-cv h4{margin:0 0 4px;font-size:14px}
+  .grid{display:grid;gap:12px}
+  .three{grid-template-columns:repeat(3,1fr)}
+  details{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:#fff;margin-top:12px}
+  summary{cursor:pointer;font-size:13px;font-weight:600}
+  .pastebox{margin-top:12px}
+  textarea.ta{width:100%;height:160px;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;font-family:inherit;resize:vertical}
+  .pill-row{display:flex;gap:6px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1>Job Applicator</h1>
+    <p class="sub">v3 · lean</p>
+    <nav id="nav">
+      <button data-view="jobs" class="active"><span class="dot"></span>Jobs</button>
+      <button data-view="settings"><span class="dot"></span>Settings</button>
+    </nav>
+    <div class="foot">Daily loop: scan → review → apply. Everything else is Settings.</div>
+  </aside>
+
+  <main>
+    <!-- JOBS -->
+    <section id="jobs">
+      <div class="head">
+        <div><h2>Jobs</h2><div class="meta">Last scan today 07:00 · 23 new · ranked by match score</div></div>
+        <div><button class="btn ghost" onclick="togglePaste()">+ Paste JD</button> <button class="btn">Run scan</button></div>
+      </div>
+
+      <div id="pastePanel" class="panel p pastebox hide">
+        <input type="text" placeholder="Job URL (optional)" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px"/>
+        <textarea class="ta" placeholder="Paste a full job description…"></textarea>
+        <div style="margin-top:8px"><button class="btn" onclick="openReview('Pasted role','this JD')">Run &amp; review</button> <button class="btn ghost" onclick="togglePaste()">Cancel</button></div>
+      </div>
+
+      <div class="panel p" style="margin-top:14px">
+        <table>
+          <thead><tr><th>Score</th><th>Role / Company</th><th>Mode</th><th>Posted</th><th>Status</th></tr></thead>
+          <tbody id="jobRows"></tbody>
+        </table>
+        <button class="linkbtn" onclick="toggleLower()" id="lowerBtn">Show 19 lower matches ▾</button>
+        <tbody></tbody>
+      </div>
+    </section>
+
+    <!-- REVIEW -->
+    <section id="review" class="hide">
+      <div class="crumb"><a onclick="go('jobs')">Jobs</a> › <span id="rwTitle">Founding PM — Ledgerline</span></div>
+      <div class="head">
+        <div><h2 id="rwH">Founding PM — Ledgerline</h2><div class="meta"><span class="score s-hi">91</span> · <span class="mode m-remote">Remote</span> · <a class="jd" href="#" onclick="return false">Open JD ↗</a></div></div>
+        <div><button class="btn danger" onclick="go('jobs')">Reject</button> <button class="btn ok">Approve &amp; mark applied</button></div>
+      </div>
+
+      <div class="whyline" id="whyLine"><strong>Why 91:</strong> crypto + 0→1 + remote + comp fit. Base = Crypto PM. Reads B2C.</div>
+
+      <div class="leanbar">
+        <div class="tabs2" style="margin:0">
+          <button class="on" onclick="dtab(event,'d-cv')">CV</button>
+          <button onclick="dtab(event,'d-cl')">Cover letter</button>
+          <button onclick="dtab(event,'d-sq')">Screening</button>
+        </div>
+        <span style="flex:1"></span>
+        <span class="hint" style="margin:0">Type to edit. Click a <mark class="chg" onclick="return false">highlight</mark> to keep or revert.</span>
+      </div>
+
+      <div id="d-cv" class="doc" contenteditable="true">
+        <p><strong><mark class="chg" data-base="Product leader in crypto & fintech">Founding Product Manager — 0→1 consumer crypto</mark></strong></p>
+        <p>Product manager with 8 years building wallet and DeFi products. <mark class="chg" data-base="">Built the first product function at two seed-stage startups.</mark></p>
+        <p>• <mark class="chg" data-base="Scaled payments infra to 2M MAU">Led 0→40k users in 6 months on a non-custodial wallet (B2C)</mark><br>
+        • Shipped token-incentive features with measurable retention lift<br>
+        • Partnered with eng and design from day one</p>
+        <p class="muted">Skills: <mark class="chg" data-base="product strategy, roadmapping">token design, community-led growth, EVM, product strategy</mark></p>
+      </div>
+
+      <div id="d-cl" class="doc hide" contenteditable="true">
+        <p>Dear Ledgerline team,</p>
+        <p>Your wallet roadmap maps directly to what I built at Chainmint — <mark class="chg" data-base="I have relevant experience">0→40k users in six months on a non-custodial wallet</mark>. <mark class="chg" data-base="">I lead 0→1 consumer products end to end.</mark></p>
+        <p>I'd welcome the chance to talk.</p>
+      </div>
+
+      <div id="d-sq" class="doc hide" contenteditable="true">
+        <p><strong>Why this company?</strong><br><mark class="chg" data-base="I admire your work.">Your token-incentive model is exactly the kind of consumer mechanic I want to own.</mark></p>
+        <p><strong>Salary expectation?</strong><br>£140–165k + equity</p>
+        <p><strong>Notice period?</strong><br>4 weeks</p>
+      </div>
+
+      <details>
+        <summary>Score breakdown &amp; base routing</summary>
+        <div style="font-size:12.5px;color:#33373d;margin-top:8px">
+          domain 25 · scope 18 · stage 20 · comp 14 · geo 10 · recency 4 = 91.<br>
+          Base = Crypto PM (crypto keywords matched first). B2C lean: consumer bullets surfaced first, one B2B kept for range.
+        </div>
+      </details>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="settings" class="hide">
+      <div class="head"><div><h2>Settings</h2><div class="meta">Set once, then ignore</div></div></div>
+
+      <div class="muted" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:6px 0 10px">Base CVs</div>
+      <div class="grid three">
+        <div class="card-cv"><h4>Crypto PM <span class="chip c-crypto">crypto</span></h4><p class="muted" style="margin:4px 0">crypto-pm.docx</p><button class="btn ghost sm">Replace</button></div>
+        <div class="card-cv"><h4>CPO / VP <span class="chip c-cpo">cpo-vp</span></h4><p class="muted" style="margin:4px 0">cpo-vp.docx</p><button class="btn ghost sm">Replace</button></div>
+        <div class="card-cv"><h4>Founding PM <span class="chip c-founding">founding</span></h4><p class="muted" style="margin:4px 0">founding-pm.docx</p><button class="btn ghost sm">Replace</button></div>
+      </div>
+
+      <details open>
+        <summary>Filters</summary>
+        <div style="margin-top:10px">
+          <div class="muted" style="font-size:12px;margin-bottom:4px">Roles included</div>
+          <div class="pill-row"><span class="chip c-cpo">PM</span><span class="chip c-cpo">Senior PM</span><span class="chip c-cpo">Head of Product</span><span class="chip c-cpo">VP/CPO</span><span class="chip c-cpo">Founding PM</span></div>
+          <div class="muted" style="font-size:12px;margin:12px 0 4px">Geo gate <span style="font-weight:400">— drop roles that don't fit before storing</span></div>
+          <div class="pill-row"><span class="mode m-remote">Remote (non-US friendly)</span><span class="mode m-hybrid">Hybrid UK</span></div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Boards (29) — last run status</summary>
+        <table style="margin-top:10px"><thead><tr><th>Board</th><th>Method</th><th>Last run</th></tr></thead><tbody id="boardRows"></tbody></table>
+      </details>
+    </section>
+  </main>
+</div>
+
+<div id="pop" class="pop hide"></div>
+
+<script>
+  // [score, role, company, mode, posted, base, status, isNew, lower]
+  const jobs=[
+    [91,"Founding Product Manager","Ledgerline","remote","Jun 7","crypto","review",true,false],
+    [88,"VP Product","Northwind","hybrid","Jun 8","cpo","review",true,false],
+    [84,"Head of Product","Brightpay","remote","Jun 4","cpo","review",false,false],
+    [79,"Senior PM, Wallet","Chainmint","remote","Jun 2","crypto","new",false,false],
+    [76,"Founding PM","Slate","hybrid","Jun 8","founding","applied",true,false],
+    [74,"Group PM","Vela","remote","Jun 6","cpo","new",false,false],
+    [72,"Lead PM, Payments","Arcus","remote","Jun 5","crypto","new",false,false],
+    [71,"Director of Product","Hatch","hybrid","Jun 3","cpo","new",false,false],
+    [70,"Founding PM","Quanta","remote","Jun 7","founding","new",true,false],
+    [70,"Senior PM","Driftwood","onsite","Jun 4","cpo","new",false,false],
+    [62,"Product Manager, Growth","Tinsel","remote","Jun 5","cpo","new",false,true],
+    [58,"PM, Internal Tools","Orbit","onsite","Jun 3","cpo","new",false,true]
+  ];
+  const modeCls={remote:"m-remote",hybrid:"m-hybrid",onsite:"m-onsite"};
+  const modeLbl={remote:"Remote",hybrid:"Hybrid UK",onsite:"Onsite"};
+  const stPill={new:'<span class="status-pill st-new">new</span>',review:'<span class="status-pill st-review">in review</span>',approved:'<span class="status-pill st-approved">approved</span>',applied:'<span class="status-pill st-applied">applied</span>'};
+  let showLower=false;
+  function renderJobs(){
+    document.getElementById("jobRows").innerHTML = jobs.filter(j=>showLower||!j[8]).map(j=>{
+      const s=j[0]>=80?"s-hi":j[0]>=70?"s-mid":"s-lo";
+      const nw=j[7]?'<span class="new">NEW</span>':'';
+      return `<tr class="rowlink" onclick="openReview('${j[1]}','${j[2]}')">
+        <td class="score ${s}">${j[0]}</td>
+        <td>${j[1]} ${nw}<div class="sub2">${j[2]}</div></td>
+        <td><span class="mode ${modeCls[j[3]]}">${modeLbl[j[3]]}</span></td>
+        <td class="muted">${j[4]}</td>
+        <td>${stPill[j[6]]}</td></tr>`;
+    }).join("");
+  }
+  function toggleLower(){showLower=!showLower;renderJobs();
+    document.getElementById("lowerBtn").textContent = showLower?"Hide lower matches ▴":"Show 19 lower matches ▾";}
+  renderJobs();
+
+  // boards (settings)
+  const boards=[
+    ["Web3Career","API","ok"],["Adzuna","API","ok"],["RemoteOK","API","ok"],["CryptocurrencyJobs","API","ok"],
+    ["WorkingNomads","API","stale"],["YCombinator","Browser","ok"],["Otta / Welcome","Browser","ok"],
+    ["LinkedIn","Browser","ok"],["Glassdoor","Browser","failed"],["CareerJet","Browser","stale"],
+    ["Naukri","Manual","manual"],["Monster","Manual","manual"],["GulfTalent","Manual","manual"]
+  ];
+  const lr={ok:'<span class="status-pill st-approved">OK</span>',failed:'<span class="status-pill st-new" style="background:#fee2e2;color:#991b1b">Failed</span>',stale:'<span class="status-pill st-new">Stale</span>',manual:'<span class="muted">n/a — by hand</span>'};
+  document.getElementById("boardRows").innerHTML = boards.map(b=>`<tr><td>${b[0]}</td><td class="muted">${b[1]}</td><td>${lr[b[2]]}</td></tr>`).join("");
+
+  const views=["jobs","review","settings"];
+  function go(v){views.forEach(x=>document.getElementById(x).classList.toggle("hide",x!==v));
+    document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===v));
+    hidePop();window.scrollTo(0,0);}
+  document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>go(b.dataset.view));
+  function openReview(role,company){
+    document.getElementById("rwTitle").textContent=role+" — "+company;
+    document.getElementById("rwH").textContent=role+" — "+company;
+    go("review");
+  }
+  function dtab(e,id){["d-cv","d-cl","d-sq"].forEach(x=>document.getElementById(x).classList.toggle("hide",x!==id));
+    e.target.parentNode.querySelectorAll("button").forEach(x=>x.classList.remove("on"));e.target.classList.add("on");hidePop();}
+  function togglePaste(){document.getElementById("pastePanel").classList.toggle("hide");}
+
+  // highlight keep/revert
+  const pop=document.getElementById("pop");
+  let activeMark=null;
+  document.addEventListener("click",e=>{
+    const m=e.target.closest("mark.chg");
+    if(m && m.dataset.base!==undefined){showPop(m,e);}
+    else if(!e.target.closest("#pop")){hidePop();}
+  });
+  function showPop(m,e){
+    activeMark=m;
+    pop.innerHTML='<button class="keep">Keep</button><button class="rev">Revert</button>';
+    pop.classList.remove("hide");
+    const r=m.getBoundingClientRect();
+    pop.style.top=(window.scrollY+r.bottom+6)+"px";
+    pop.style.left=(window.scrollX+r.left)+"px";
+    pop.querySelector(".keep").onclick=()=>{unwrap(activeMark,activeMark.textContent);};
+    pop.querySelector(".rev").onclick=()=>{unwrap(activeMark,activeMark.dataset.base);};
+    e.stopPropagation();
+  }
+  function unwrap(m,text){const t=document.createTextNode(text);m.parentNode.replaceChild(t,m);hidePop();}
+  function hidePop(){pop.classList.add("hide");activeMark=null;}
+</script>
+</body>
+</html>

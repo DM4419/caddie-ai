@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Job Applicator — UX Spec v4 (lean + CV review)</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#fff; --ink:#16191d; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#2f6df6; --green:#16a34a; --amber:#d97706; --red:#dc2626;
+    --radius:10px; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 12px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .app{display:grid;grid-template-columns:190px 1fr;min-height:100vh}
+  aside{background:#0f1115;color:#cbd2dc;padding:18px 14px;position:sticky;top:0;height:100vh}
+  aside h1{color:#fff;font-size:15px;margin:4px 6px 2px}
+  aside .sub{color:#7c8597;font-size:11px;margin:0 6px 18px}
+  nav button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;color:#cbd2dc;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px}
+  nav button:hover{background:#1a1d24;color:#fff}
+  nav button.active{background:var(--accent);color:#fff}
+  nav .dot{width:7px;height:7px;border-radius:50%;background:#3a4150}
+  nav button.active .dot{background:#fff}
+  aside .foot{position:absolute;bottom:14px;left:14px;right:14px;color:#5b6473;font-size:10px;line-height:1.4}
+  main{padding:24px 30px;max-width:980px}
+  .crumb{font-size:12px;color:var(--muted);margin-bottom:8px}
+  .crumb a{color:var(--accent);text-decoration:none;cursor:pointer}
+  .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px}
+  .head h2{margin:0;font-size:20px}
+  .head .meta{color:var(--muted);font-size:12.5px;margin-top:3px}
+  .btn{background:var(--accent);color:#fff;border:0;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn.sm{padding:5px 9px;font-size:12px}
+  .btn.ok{background:var(--green)} .btn.danger{background:#fff;color:var(--red);border:1px solid #f3c7c7}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .panel.p{padding:16px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+  tr:last-child td{border-bottom:0}
+  .rowlink{cursor:pointer} .rowlink:hover{background:#fafbff}
+  .score{font-weight:700;font-size:15px}
+  .s-hi{color:var(--green)} .s-mid{color:var(--amber)} .s-lo{color:var(--muted)}
+  .sub2{font-size:11.5px;color:var(--muted);margin-top:1px}
+  .new{background:#fde68a;color:#92400e;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;margin-left:6px;vertical-align:middle}
+  .mode{font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px}
+  .m-remote{background:#dcfce7;color:#166534}
+  .m-hybrid{background:#e0e7ff;color:#3730a3}
+  .m-onsite{background:#fee2e2;color:#991b1b}
+  .status-pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px}
+  .st-new{background:#fef3c7;color:#92400e}
+  .st-review{background:#dbeafe;color:#1e40af}
+  .st-approved{background:#dcfce7;color:#166534}
+  .st-applied{background:#e0e7ff;color:#3730a3}
+  .muted{color:var(--muted)}
+  .chip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+  .c-crypto{background:#efe7fb;color:#6d28d9}
+  .c-cpo{background:#e3eefb;color:#1d4ed8}
+  .c-founding{background:#e7f6ec;color:#157f3b}
+  .jd{color:var(--accent);text-decoration:none;font-weight:600}
+  .hide{display:none}
+  .linkbtn{background:none;border:0;color:var(--accent);font-size:12.5px;cursor:pointer;padding:8px 0}
+  .tabs2{display:flex;gap:6px}
+  .tabs2 button{border:1px solid var(--line);background:#fff;padding:6px 12px;border-radius:8px;font-size:12.5px;cursor:pointer}
+  .tabs2 button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .leanbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .whyline{font-size:12.5px;color:#33373d;background:#f8f9fb;border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 8px 8px 0;margin-bottom:14px}
+  /* CV preview */
+  .doc{border:1px solid var(--line);border-radius:10px;padding:26px 30px;font-size:13px;line-height:1.7;background:#fff}
+  .doc h3{font-size:18px;margin:0 0 2px}
+  .doc .role-h{font-size:13.5px;font-weight:700;margin:14px 0 2px}
+  .doc .small{color:var(--muted);font-size:12px}
+  .doc ul{margin:4px 0 0;padding-left:18px}
+  .doc li{margin:2px 0}
+  mark.chg{background:#fff3cd;border-bottom:2px solid #f0c000;border-radius:3px;padding:0 2px;cursor:pointer}
+  mark.chg:hover{background:#ffe9a8}
+  mark.done{background:transparent;border-bottom:2px dotted #9aa3af;cursor:pointer}
+  .hint{font-size:11.5px;color:var(--muted)}
+  details{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:#fff;margin-top:12px}
+  summary{cursor:pointer;font-size:13px;font-weight:600}
+  .card-cv{padding:14px;border:1px dashed var(--line);border-radius:10px;background:#fafbfc}
+  .card-cv h4{margin:0 0 4px;font-size:14px}
+  .grid{display:grid;gap:12px}.three{grid-template-columns:repeat(3,1fr)}
+  textarea.ta{width:100%;height:140px;border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;font-family:inherit;resize:vertical}
+  .pill-row{display:flex;gap:6px;flex-wrap:wrap}
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(15,17,21,.45);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
+  .modal{background:#fff;border-radius:14px;max-width:620px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+  .modal .mh{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .modal .mh h3{margin:0;font-size:15px}
+  .modal .mb{padding:18px 20px}
+  .rat{background:#f8f9fb;border-left:3px solid var(--accent);padding:10px 12px;border-radius:0 8px 8px 0;font-size:12.5px;margin-bottom:16px}
+  .opt{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;cursor:pointer}
+  .opt.sel{border-color:var(--accent);box-shadow:0 0 0 2px rgba(47,109,246,.15)}
+  .opt .lab{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .opt .txt{font-size:13px;line-height:1.6}
+  .opt .dotsel{width:14px;height:14px;border-radius:50%;border:2px solid #c7ccd6}
+  .opt.sel .dotsel{border-color:var(--accent);background:radial-gradient(circle,#2f6df6 0 5px,#fff 6px)}
+  .mf{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+  .x{background:none;border:0;font-size:20px;cursor:pointer;color:var(--muted);line-height:1}
+  /* print */
+  #printArea{display:none}
+  @media print{
+    body *{visibility:hidden}
+    #printArea, #printArea *{visibility:visible}
+    #printArea{display:block;position:absolute;top:0;left:0;width:100%;padding:40px 48px;font-size:12.5px;line-height:1.6;color:#000}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1>Job Applicator</h1>
+    <p class="sub">v4 · lean + CV review</p>
+    <nav id="nav">
+      <button data-view="jobs" class="active"><span class="dot"></span>Jobs</button>
+      <button data-view="settings"><span class="dot"></span>Settings</button>
+    </nav>
+    <div class="foot">Daily loop: scan → review &amp; edit → download → apply.</div>
+  </aside>
+
+  <main>
+    <!-- JOBS -->
+    <section id="jobs">
+      <div class="head">
+        <div><h2>Jobs</h2><div class="meta">Last scan today 07:00 · 23 new · ranked by score</div></div>
+        <div><button class="btn ghost" onclick="downloadCsv()">⬇ CSV</button> <button class="btn ghost" onclick="togglePaste()">+ Paste JD</button> <button class="btn">Run scan</button></div>
+      </div>
+      <div id="pastePanel" class="panel p hide">
+        <input type="text" id="pUrl" placeholder="Paste a job URL (e.g. https://jobs.lever.co/acme/123)" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px"/>
+        <textarea class="ta" id="pText" placeholder="…or paste the full job description (optional if URL given)"></textarea>
+        <div style="margin-top:8px"><button class="btn" onclick="addPasted()">Add to list</button> <button class="btn ghost" onclick="togglePaste()">Cancel</button></div>
+        <div class="hint" style="margin-top:8px">The agent fetches the URL, scores it, and adds a row below. Click the row to review drafts.</div>
+      </div>
+      <div class="panel p" style="margin-top:14px">
+        <table><thead><tr><th>Score</th><th>Role / Company</th><th>Mode</th><th>Posted</th><th>Status</th></tr></thead>
+          <tbody id="jobRows"></tbody></table>
+        <button class="linkbtn" id="lowerBtn" onclick="toggleLower()">Show 19 lower matches ▾</button>
+      </div>
+    </section>
+
+    <!-- REVIEW -->
+    <section id="review" class="hide">
+      <div class="crumb"><a onclick="go('jobs')">Jobs</a> › <span id="rwTitle">Founding PM — Ledgerline</span></div>
+      <div class="head">
+        <div><h2 id="rwH">Founding PM — Ledgerline</h2><div class="meta"><span class="score s-hi">91</span> · <span class="mode m-remote">Remote</span> · <a class="jd" href="#" onclick="return false">Open JD ↗</a></div></div>
+        <div><button class="btn danger" onclick="go('jobs')">Reject</button> <button class="btn ok">Approve &amp; mark applied</button></div>
+      </div>
+
+      <div class="whyline"><strong>Why 91:</strong> full remote + crypto/web3 domain + strong skills match. Base = Crypto PM. Reads B2C.</div>
+
+      <div class="leanbar">
+        <div class="tabs2">
+          <button class="on" onclick="dtab(event,'d-cv')">CV</button>
+          <button onclick="dtab(event,'d-cl')">Cover letter</button>
+          <button onclick="dtab(event,'d-sq')">Screening</button>
+        </div>
+        <span style="flex:1"></span>
+        <button class="btn ghost sm" onclick="downloadDoc('d-cv','CV — Ledgerline')">⬇ CV PDF</button>
+        <button class="btn ghost sm" onclick="downloadDoc('d-cl','Cover letter — Ledgerline')">⬇ Cover letter PDF</button>
+      </div>
+      <div class="hint" style="margin-bottom:10px">Full preview. <mark class="chg" onclick="return false">Yellow</mark> = changed from base. Click a highlight to compare versions, see the rationale, or type your own.</div>
+
+      <!-- CV PREVIEW -->
+      <div id="d-cv" class="doc">
+        <h3>Alex Rivera</h3>
+        <div class="small">Product leader · Remote / EU · alex.rivera@example.com</div>
+        <p style="margin-top:12px"><strong><mark class="chg" data-base="Product leader in crypto and fintech." data-rat="JD is a founding role; lead with 0→1 framing, not generic 'leader'.">Founding Product Manager building 0→1 consumer crypto products.</mark></strong> <mark class="chg" data-base="" data-rat="No founding line in base; JD stresses first-PM ownership.">Built the first product function at two seed-stage startups.</mark></p>
+
+        <div class="role-h">Senior PM — Chainmint <span class="small">· 2022–present</span></div>
+        <ul>
+          <li><mark class="chg" data-base="Scaled payments infrastructure serving 2M monthly users." data-rat="JD is B2C wallet; surface consumer-growth metric over infra.">Led 0→40k users in 6 months on a non-custodial wallet.</mark></li>
+          <li><mark class="chg" data-base="Improved transaction reliability across the platform." data-rat="Reframe to token-incentive work named in the JD.">Shipped token-incentive features with measurable retention lift.</mark></li>
+          <li>Partnered with engineering and design from day one.</li>
+        </ul>
+
+        <div class="role-h">PM — Arcus <span class="small">· 2019–2022</span></div>
+        <ul>
+          <li>Owned the payments roadmap across three squads.</li>
+          <li><mark class="chg" data-base="Drove enterprise integrations with key partners." data-rat="Kept one B2B bullet for range, lightly de-emphasised.">Drove partner integrations (B2B) alongside consumer launches.</mark></li>
+        </ul>
+
+        <div class="role-h">Skills</div>
+        <p class="small"><mark class="chg" data-base="product strategy, roadmapping, analytics" data-rat="Inject JD keywords: token design, community-led growth, EVM.">token design, community-led growth, EVM, product strategy, analytics</mark></p>
+
+        <div class="role-h">Education</div>
+        <p class="small">MSc, University — 2015</p>
+      </div>
+
+      <!-- COVER LETTER -->
+      <div id="d-cl" class="doc hide">
+        <p>Dear Ledgerline team,</p>
+        <p><mark class="chg" data-base="I am writing to express my interest in this role." data-rat="Open with company-specific hook, not boilerplate.">Your wallet roadmap maps directly to what I built at Chainmint.</mark> <mark class="chg" data-base="I have relevant product experience." data-rat="Lead with the strongest 0→1 consumer proof point.">I took a non-custodial wallet from 0 to 40k users in six months.</mark></p>
+        <p>I lead consumer crypto products end to end and would welcome the chance to talk.</p>
+        <p>Best,<br>Alex</p>
+      </div>
+
+      <!-- SCREENING -->
+      <div id="d-sq" class="doc hide">
+        <p><strong>Why this company?</strong><br><mark class="chg" data-base="I admire your work." data-rat="Tie to a concrete product mechanic from the JD.">Your token-incentive model is exactly the consumer mechanic I want to own.</mark></p>
+        <p><strong>Salary expectation?</strong><br>£140–165k + equity</p>
+        <p><strong>Notice period?</strong><br>4 weeks</p>
+      </div>
+
+      <details>
+        <summary>Score breakdown &amp; base routing</summary>
+        <div style="font-size:12.5px;color:#33373d;margin-top:8px">full remote 30 · skills &amp; quals 24 · domain match 27 (crypto) · stage 10 = 91. Base = Crypto PM. B2C lean.</div>
+      </details>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="settings" class="hide">
+      <div class="head"><div><h2>Settings</h2><div class="meta">Set once, then ignore</div></div></div>
+      <div class="muted" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:6px 0 10px">Base documents (single set for MVP)</div>
+      <div class="grid" style="grid-template-columns:repeat(2,1fr)">
+        <div class="card-cv"><h4>Base CV</h4><p class="muted" style="margin:4px 0">base-cv.md · not uploaded</p><button class="btn ghost sm">Upload</button></div>
+        <div class="card-cv"><h4>Base cover letter</h4><p class="muted" style="margin:4px 0">base-cl.md · not uploaded</p><button class="btn ghost sm">Upload</button></div>
+      </div>
+      <div class="hint" style="margin-top:8px">Multiple base versions (crypto / CPO-VP / founding) come later — single set keeps the MVP lean.</div>
+      <details open><summary>Scoring weights <span class="muted" style="font-weight:400">— must sum to 100; changing them re-scores the list</span></summary>
+        <div id="weightBox" style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px"></div>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:12px">
+          <span id="weightSum" style="font-size:13px;font-weight:600"></span>
+          <button class="btn sm" onclick="saveWeights()">Save &amp; re-score</button>
+        </div>
+      </details>
+
+      <details open><summary>Filters</summary>
+        <div style="margin-top:10px">
+          <div class="muted" style="font-size:12px;margin-bottom:4px">Roles included</div>
+          <div class="pill-row"><span class="chip c-cpo">PM</span><span class="chip c-cpo">Senior PM</span><span class="chip c-cpo">Head of Product</span><span class="chip c-cpo">VP/CPO</span><span class="chip c-cpo">Founding PM</span></div>
+          <div class="muted" style="font-size:12px;margin:12px 0 4px">Geo gate</div>
+          <div class="pill-row"><span class="mode m-remote">Remote (non-US friendly)</span><span class="mode m-hybrid">Hybrid UK</span></div>
+        </div></details>
+      <details><summary>Boards (29) — last run status</summary>
+        <table style="margin-top:10px"><thead><tr><th>Board</th><th>Method</th><th>Last run</th></tr></thead><tbody id="boardRows"></tbody></table></details>
+    </section>
+  </main>
+</div>
+
+<!-- modal mount -->
+<div id="modal"></div>
+<!-- print mount -->
+<div id="printArea"></div>
+
+<script>
+  const jobs=[
+    [91,"Founding Product Manager","Ledgerline","remote","Jun 7","crypto","review",true,false],
+    [88,"VP Product","Northwind","hybrid","Jun 8","cpo","review",true,false],
+    [84,"Head of Product","Brightpay","remote","Jun 4","cpo","review",false,false],
+    [79,"Senior PM, Wallet","Chainmint","remote","Jun 2","crypto","new",false,false],
+    [76,"Founding PM","Slate","hybrid","Jun 8","founding","applied",true,false],
+    [74,"Group PM","Vela","remote","Jun 6","cpo","new",false,false],
+    [72,"Lead PM, Payments","Arcus","remote","Jun 5","crypto","new",false,false],
+    [71,"Director of Product","Hatch","hybrid","Jun 3","cpo","new",false,false],
+    [70,"Founding PM","Quanta","remote","Jun 7","founding","new",true,false],
+    [70,"Senior PM","Driftwood","onsite","Jun 4","cpo","new",false,false],
+    [62,"Product Manager, Growth","Tinsel","remote","Jun 5","cpo","new",false,true],
+    [58,"PM, Internal Tools","Orbit","onsite","Jun 3","cpo","new",false,true]
+  ];
+  const modeCls={remote:"m-remote",hybrid:"m-hybrid",onsite:"m-onsite"};
+  const modeLbl={remote:"Remote",hybrid:"Hybrid UK",onsite:"Onsite"};
+  const stPill={new:'<span class="status-pill st-new">new</span>',review:'<span class="status-pill st-review">in review</span>',approved:'<span class="status-pill st-approved">approved</span>',applied:'<span class="status-pill st-applied">applied</span>'};
+  let showLower=false;
+  function renderJobs(){
+    document.getElementById("jobRows").innerHTML=jobs.filter(j=>showLower||!j[8]).map(j=>{
+      const s=j[0]>=80?"s-hi":j[0]>=70?"s-mid":"s-lo";const nw=j[7]?'<span class="new">NEW</span>':'';
+      return `<tr class="rowlink" onclick="openReview('${j[1]}','${j[2]}')"><td class="score ${s}">${j[0]}</td>
+        <td>${j[1]} ${nw}<div class="sub2">${j[2]}</div></td>
+        <td><span class="mode ${modeCls[j[3]]}">${modeLbl[j[3]]}</span></td>
+        <td class="muted">${j[4]}</td><td>${stPill[j[6]]}</td></tr>`;
+    }).join("");
+  }
+  function toggleLower(){showLower=!showLower;renderJobs();
+    document.getElementById("lowerBtn").textContent=showLower?"Hide lower matches ▴":"Show 19 lower matches ▾";}
+  renderJobs();
+
+  const boards=[["Web3Career","API","ok"],["Adzuna","API","ok"],["RemoteOK","API","ok"],["CryptocurrencyJobs","API","ok"],
+    ["WorkingNomads","API","stale"],["YCombinator","Browser","ok"],["Otta / Welcome","Browser","ok"],
+    ["LinkedIn","Browser","ok"],["Glassdoor","Browser","failed"],["CareerJet","Browser","stale"],
+    ["Naukri","Manual","manual"],["Monster","Manual","manual"],["GulfTalent","Manual","manual"]];
+  const lr={ok:'<span class="status-pill st-approved">OK</span>',failed:'<span class="status-pill" style="background:#fee2e2;color:#991b1b">Failed</span>',stale:'<span class="status-pill st-new">Stale</span>',manual:'<span class="muted">n/a — by hand</span>'};
+  document.getElementById("boardRows").innerHTML=boards.map(b=>`<tr><td>${b[0]}</td><td class="muted">${b[1]}</td><td>${lr[b[2]]}</td></tr>`).join("");
+
+  const views=["jobs","review","settings"];
+  function go(v){views.forEach(x=>document.getElementById(x).classList.toggle("hide",x!==v));
+    document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===v));
+    window.scrollTo(0,0);}
+  document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>go(b.dataset.view));
+  function openReview(role,company){document.getElementById("rwTitle").textContent=role+" — "+company;
+    document.getElementById("rwH").textContent=role+" — "+company;go("review");}
+  function dtab(e,id){["d-cv","d-cl","d-sq"].forEach(x=>document.getElementById(x).classList.toggle("hide",x!==id));
+    e.target.parentNode.querySelectorAll("button").forEach(x=>x.classList.remove("on"));e.target.classList.add("on");}
+  function togglePaste(){document.getElementById("pastePanel").classList.toggle("hide");}
+  function addPasted(){
+    const url=document.getElementById("pUrl").value.trim();
+    const txt=document.getElementById("pText").value.trim();
+    if(!url && !txt){alert("Paste a job URL or description.");return;}
+    let company="Pasted JD";
+    try{ if(url) company=new URL(url).hostname.replace(/^www\./,""); }catch(e){}
+    const lc=(url+" "+txt).toLowerCase();
+    const role=/vp|head of|chief|cpo/.test(lc)?"VP / Head of Product":/founding|first product/.test(lc)?"Founding PM":"Product Manager";
+    const mode=/hybrid/.test(lc)?"hybrid":/on[-\s]?site/.test(lc)?"onsite":"remote";
+    const score=txt.length>0?60+Math.min(34,Math.floor(txt.length/40)):72;
+    jobs.unshift([score,role,company,mode,"today","cpo","new",true,false]);
+    renderJobs();
+    document.getElementById("pUrl").value="";document.getElementById("pText").value="";
+    togglePaste();
+    document.getElementById("jobRows").scrollIntoView({behavior:"smooth"});
+  }
+
+  // ---- compare modal ----
+  let curMark=null, curChoice="custom";
+  document.addEventListener("click",e=>{
+    const m=e.target.closest("mark");
+    if(m && (m.classList.contains("chg")||m.classList.contains("done")) && m.dataset.base!==undefined && m.onclick===null){
+      openModal(m);
+    }
+  });
+  function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+  function openModal(m){
+    curMark=m; curChoice="custom";
+    const custom=m.textContent, base=m.dataset.base||"(nothing in base — this is new)", rat=m.dataset.rat||"";
+    document.getElementById("modal").innerHTML=`
+     <div class="overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <div class="mh"><h3>Review change</h3><button class="x" onclick="closeModal()">×</button></div>
+        <div class="mb">
+          <div class="rat"><strong>Why changed:</strong> ${esc(rat)}</div>
+          <div class="opt sel" data-c="custom" onclick="pick('custom')">
+            <div class="lab"><span class="dotsel"></span>Custom (tailored)</div><div class="txt">${esc(custom)}</div></div>
+          <div class="opt" data-c="base" onclick="pick('base')">
+            <div class="lab"><span class="dotsel"></span>Base version</div><div class="txt">${esc(base)}</div></div>
+          <div class="opt" data-c="own" onclick="pick('own')">
+            <div class="lab"><span class="dotsel"></span>Your version</div>
+            <textarea class="ta" id="ownText" style="height:80px" placeholder="Type your final wording…" oninput="curChoice='own';markOwn()">${esc(custom)}</textarea></div>
+        </div>
+        <div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn ok" onclick="saveChange()">Save</button></div>
+      </div></div>`;
+  }
+  function pick(c){curChoice=c;document.querySelectorAll(".opt").forEach(o=>o.classList.toggle("sel",o.dataset.c===c));}
+  function markOwn(){pick('own');}
+  function saveChange(){
+    if(!curMark)return;
+    let text;
+    if(curChoice==="base") text=curMark.dataset.base||"";
+    else if(curChoice==="own") text=document.getElementById("ownText").value;
+    else text=curMark.textContent; // custom = leave as is
+    if(text===""){curMark.parentNode.removeChild(curMark);} // base was empty -> remove the added text
+    else {curMark.textContent=text; curMark.classList.remove("chg"); curMark.classList.add("done"); curMark.title="reviewed — click to change again";}
+    closeModal();
+  }
+  function closeModal(){document.getElementById("modal").innerHTML="";curMark=null;}
+
+  // ---- download as PDF (clean, via print) ----
+  function cleanClone(id){
+    const src=document.getElementById(id).cloneNode(true);
+    src.querySelectorAll("mark").forEach(m=>{const t=document.createTextNode(m.textContent);m.parentNode.replaceChild(t,m);});
+    src.classList.remove("hide");
+    return src.innerHTML;
+  }
+  function downloadDoc(id,title){
+    document.getElementById("printArea").innerHTML=cleanClone(id);
+    const old=document.title; document.title=title;
+    window.print();
+    setTimeout(()=>{document.title=old;document.getElementById("printArea").innerHTML="";},500);
+  }
+
+  // ---- download jobs CSV ----
+  function downloadCsv(){
+    const head=["score","role","company","mode","posted","status"];
+    const rows=jobs.map(j=>[j[0],j[1],j[2],modeLbl[j[3]],j[4],j[6]]);
+    const csv=[head,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const blob=new Blob([csv],{type:"text/csv"});
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob); a.download="jobs.csv"; a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // ---- editable scoring weights ----
+  const weights={remote:30,skills:30,domain:30,stage:10};
+  const wLabels={remote:"Full remote",skills:"Skills & quals match",domain:"Domain match",stage:"Stage"};
+  function renderWeights(){
+    document.getElementById("weightBox").innerHTML=Object.keys(weights).map(k=>
+      `<label style="font-size:12.5px">${wLabels[k]}<br>
+       <input type="number" min="0" max="100" value="${weights[k]}" data-w="${k}" oninput="onWeight(this)"
+        style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;margin-top:3px"></label>`).join("");
+    updateSum();
+  }
+  function onWeight(el){weights[el.dataset.w]=parseInt(el.value||"0",10);updateSum();}
+  function updateSum(){
+    const sum=Object.values(weights).reduce((a,b)=>a+b,0);
+    const el=document.getElementById("weightSum");
+    el.textContent=`Total: ${sum} / 100`;
+    el.style.color=sum===100?"var(--green)":"var(--red)";
+  }
+  function saveWeights(){
+    const sum=Object.values(weights).reduce((a,b)=>a+b,0);
+    if(sum!==100){alert("Weights must sum to 100. Currently "+sum+".");return;}
+    alert("Saved to profile.yaml and re-scored. (Mock — real app re-runs scoring.)");
+  }
+  renderWeights();
+</script>
+</body>
+</html>
