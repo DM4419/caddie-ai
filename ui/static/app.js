@@ -771,6 +771,30 @@ function renderDraftArea(job) {
     <div id="d-cl" class="doc hide">${d.cl_html}</div>
     <div id="d-sq" class="doc hide">${d.screening_html}</div>`;
   editMode = false;
+  decorateScreening();
+}
+
+// Per-question copy button on screening answers (UI only — stripped from exports & saves).
+const SQ_COPY_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+function decorateScreening() {
+  document.querySelectorAll("#d-sq .sq").forEach(sq => {
+    const q = sq.querySelector(".sq-q");
+    if (!q || q.querySelector(".sq-copy")) return;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "sq-copy"; b.title = "Copy answer";
+    b.setAttribute("onclick", "copyScreeningAnswer(this)");
+    b.innerHTML = SQ_COPY_SVG;
+    q.appendChild(b);
+  });
+}
+function copyScreeningAnswer(btn) {
+  const sq = btn.closest(".sq"), a = sq && sq.querySelector(".sq-a");
+  if (!a) return;
+  navigator.clipboard.writeText(a.innerText.trim()).then(() => {
+    const old = btn.innerHTML;
+    btn.classList.add("copied"); btn.innerHTML = "✓";
+    setTimeout(() => { btn.innerHTML = old; btn.classList.remove("copied"); }, 1200);
+  }).catch(() => {});
 }
 
 // ---- inline edit mode (titles, sections, free text; persisted) -----------
@@ -809,7 +833,8 @@ async function toggleEdit() {
 async function saveDraftEdits() {
   if (!currentJob || !currentJob.draft) return;
   const cv = document.getElementById("d-cv"), cl = document.getElementById("d-cl"), sq = document.getElementById("d-sq");
-  const payload = { cv_html: cv.innerHTML, cl_html: cl.innerHTML, screening_html: sq.innerHTML };
+  const sqc = sq.cloneNode(true); sqc.querySelectorAll(".sq-copy").forEach(b => b.remove());
+  const payload = { cv_html: cv.innerHTML, cl_html: cl.innerHTML, screening_html: sqc.innerHTML };
   Object.assign(currentJob.draft, payload);
   const saved = document.getElementById("editSaved");
   try {
@@ -1427,6 +1452,7 @@ function cleanClone(id) {
     const t = document.createTextNode(m.textContent);
     m.parentNode.replaceChild(t, m);
   });
+  src.querySelectorAll(".sq-copy").forEach(b => b.remove());   // UI-only copy buttons
   src.classList.remove("hide");
   return src.innerHTML;
 }
