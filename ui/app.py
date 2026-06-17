@@ -262,11 +262,18 @@ def job_detail(job_id: str) -> dict:
 @app.get("/api/style")
 def get_style() -> dict:
     import re
+    from engine import learndistill
+    try:
+        learndistill.rebuild_if_stale()      # keep the distilled rules current for review
+    except Exception:
+        pass
     text = store.read_style()
     parts = re.split(r"(?m)^(?=## )", text)
     preamble = parts[0] if parts and not parts[0].startswith("## ") else ""
     entries = [p.rstrip() for p in parts if p.startswith("## ")]
-    return {"preamble": preamble, "entries": entries}
+    return {"preamble": preamble, "entries": entries,
+            "rules": store.read_style_rules(),   # condensed, inferred guidelines/guardrails
+            "recent": entries[-3:][::-1]}        # last few edits that shaped them (newest first)
 
 
 class StyleIn(BaseModel):

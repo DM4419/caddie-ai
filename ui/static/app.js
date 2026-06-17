@@ -1661,22 +1661,50 @@ async function loadStyle() {
   const d = await api("/api/style");
   _stylePreamble = d.preamble || ""; _styleEntries = d.entries || [];
   const box = document.getElementById("styleBox");
-  if (!_styleEntries.length) {
+  const rules = (d.rules || "").trim();
+  if (!_styleEntries.length && !rules) {
     box.innerHTML = '<div class="muted" style="font-size:12px">Nothing learned yet — edit a highlighted change in a draft (with a rationale) and it shows here.</div>';
     return;
   }
-  box.innerHTML = _styleEntries.map((e, i) => {
-    const lines = e.split("\n");
+  const entryCard = i => {
+    const lines = (_styleEntries[i] || "").split("\n");
     const head = (lines[0] || "").replace(/^##\s*/, "");
     const body = lines.slice(1).join("\n").trim();
     return `<div style="border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:8px">
       <div style="display:flex;align-items:center;gap:8px">
         <strong style="font-size:12.5px">${esc(head)}</strong><span style="flex:1"></span>
-        <button class="btn sm danger" onclick="deleteStyle(${i})" title="Forget this">✕</button>
-      </div>
+        <button class="btn sm danger" onclick="deleteStyle(${i})" title="Forget this">✕</button></div>
       <pre style="white-space:pre-wrap;font:11.5px/1.5 ui-monospace,monospace;color:#475569;margin:6px 0 0">${esc(body)}</pre>
     </div>`;
-  }).join("") + `<button class="btn sm ghost" onclick="deleteStyle('all')" style="margin-top:4px">Clear all</button> <span id="styleMsg" class="hint"></span>`;
+  };
+  // 1) the condensed, inferred guidelines & guardrails (what actually conditions drafts)
+  const rulesHtml = rules
+    ? `<div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#f8fafc;margin-bottom:12px;white-space:pre-wrap;font-size:12.5px;line-height:1.55">${esc(rules)}</div>`
+    : `<div class="muted" style="font-size:12px;margin-bottom:12px">No distilled rules yet — accept a few edits, then ↻ Rebuild.</div>`;
+  // 2) the most recent edits that shaped them (newest first)
+  const n = _styleEntries.length;
+  const recent = [];
+  for (let k = n - 1; k >= Math.max(0, n - 3); k--) recent.push(k);
+  const recentHtml = recent.length
+    ? `<div class="anh" style="margin:4px 0 6px">Recent edits that shaped these <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">— newest first (AI draft → your change → why)</span></div>${recent.map(entryCard).join("")}`
+    : "";
+  // 3) full list for pruning
+  const allHtml = n > recent.length
+    ? `<details style="margin-top:4px"><summary class="hint">All captured edits (${n})</summary><div style="margin-top:8px">${_styleEntries.map((_, i) => entryCard(i)).join("")}</div></details>`
+    : "";
+  box.innerHTML =
+    `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+       <strong style="font-size:12.5px">Inferred guidelines &amp; guardrails</strong>
+       <span class="muted" style="font-size:11px">— condensed from your edits; applied to every draft</span>
+       <span style="flex:1"></span>
+       <button class="btn sm ghost" onclick="rebuildLearnings(this)" title="Re-distil the rules from your latest edits">↻ Rebuild</button></div>
+     ${rulesHtml}${recentHtml}${allHtml}
+     <div style="margin-top:6px"><button class="btn sm ghost" onclick="deleteStyle('all')">Clear all learned edits</button> <span id="styleMsg" class="hint"></span></div>`;
+}
+async function rebuildLearnings(btn) {
+  if (btn) { btn.textContent = "rebuilding…"; btn.disabled = true; }
+  try { await api("/api/learnings/rebuild", { method: "POST" }); } catch (e) {}
+  loadStyle();
 }
 async function deleteStyle(i) {
   if (i === "all" && !confirm("Forget ALL learned preferences?")) return;
