@@ -233,31 +233,42 @@ async function loadJobs() {
   const data = await api(`/api/jobs?archived=${jobView === "archived"}`);
   document.getElementById("cvBanner").classList.toggle("hide", data.base.cv);
   _sources = data.sources || {};
+  _jobs = data.jobs;
   const c = data.counts || {};
   const setOpt = (id, base, n) => { const o = document.getElementById(id); if (o) o.textContent = n ? `${base} (${n})` : base; };
   setOpt("opt-archived", "Archived", data.archived_count);
   setOpt("opt-applied", "Applied", c.applied);
   setOpt("opt-skipped", "Skipped", c.skipped);
-  const fo = document.getElementById("founderCount");
-  if (fo) fo.textContent = c.founder ? `(${c.founder})` : "";
-  const vo = document.getElementById("voiceCount");
-  if (vo) vo.textContent = c.voice ? `(${c.voice})` : "";
-  const bm = document.getElementById("bookmarkedCount");
-  if (bm) { const n = (data.jobs || []).filter(j => j.bookmarked && j.status !== "applied" && j.status !== "skipped").length;
-            bm.textContent = n ? `(${n})` : ""; }   // applied + skipped hidden from bookmarked
-  _jobs = data.jobs;
+  // founder / voice / bookmarked counts recomputed client-side so they match the rows
+  // (excludes applied/skipped AND roles from companies you've already applied to).
+  const applied = appliedCompanies();
+  const inApplied = j => applied.has((j.company || "").trim().toLowerCase());
+  const untri = j => j.status !== "applied" && j.status !== "skipped" && !j.role_off_target && !inApplied(j);
+  const setN = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n ? `(${n})` : ""; };
+  setN("founderCount", _jobs.filter(j => untri(j) && (j.flags || []).some(f => FOUNDER_FLAGS.includes(f))).length);
+  setN("voiceCount", _jobs.filter(j => untri(j) && (j.flags || []).includes("voice_ai")).length);
+  setN("bookmarkedCount", _jobs.filter(j => j.bookmarked && j.status !== "applied" && j.status !== "skipped" && !inApplied(j)).length);
   renderJobRows();
 }
 
+// Companies you've already applied to — their OTHER roles drop out of the active /
+// founder / voice / bookmarked lists (they remain reachable only under Applied).
+function appliedCompanies() {
+  return new Set((_jobs || []).filter(j => j.status === "applied")
+    .map(j => (j.company || "").trim().toLowerCase()).filter(Boolean));
+}
+
 function renderJobRows() {
-  // tab scope: Active excludes applied/skipped; those have their own tabs
+  // tab scope: Active excludes applied/skipped + roles from applied companies
   let jobs = _jobs;
+  const applied = appliedCompanies();
+  const inApplied = j => applied.has((j.company || "").trim().toLowerCase());
   // active/founder/voice hide off-target roles (e.g. Technical PM); they stay reachable via their own status tabs
-  const untriaged = j => j.status !== "applied" && j.status !== "skipped" && !j.role_off_target;
+  const untriaged = j => j.status !== "applied" && j.status !== "skipped" && !j.role_off_target && !inApplied(j);
   if (jobView === "active") jobs = jobs.filter(untriaged);
   else if (jobView === "founder") jobs = jobs.filter(j => untriaged(j) && (j.flags || []).some(f => FOUNDER_FLAGS.includes(f)));
   else if (jobView === "voice") jobs = jobs.filter(j => untriaged(j) && (j.flags || []).includes("voice_ai"));
-  else if (jobView === "bookmarked") jobs = jobs.filter(j => j.bookmarked && j.status !== "applied" && j.status !== "skipped");
+  else if (jobView === "bookmarked") jobs = jobs.filter(j => j.bookmarked && j.status !== "applied" && j.status !== "skipped" && !inApplied(j));
   else if (jobView === "applied") jobs = jobs.filter(j => j.status === "applied");
   else if (jobView === "skipped") jobs = jobs.filter(j => j.status === "skipped");
   const tabTotal = jobs.length;
