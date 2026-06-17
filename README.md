@@ -15,27 +15,11 @@ drafts land a little closer to your voice.
 > The name: like a golf caddie, it reads the course and hands you the right club. You still
 > take every swing.
 
-## Screenshots
-
-**Scored board with filters** — every role ranked 0–100 against your CV, with the key
-matching drivers it quoted, unmet requirements, work-mode, and Founder-fit / Voice-AI lenses.
-
-![caddie-ai — the scored job board](assets/board.png)
-
-**Review: assessed JD + pre-drafted CV** — the JD's requirements classified
-match / stretch / gap against your CV, a fit breakdown, then your CV tailored to the role
-with every change highlighted (hover any mark to see the original + rationale) and ready to edit.
-
-![caddie-ai — the review screen with an assessed JD and a pre-drafted CV](assets/review.png)
-
-> Screenshots use **sample data** — a demo profile (“Alex Rivera”) scored against live public
-> job listings. No real candidate data.
-
 ---
 
 ## Contents
 
-- [Screenshots](#screenshots) · [Why](#why) · [The system at a glance](#the-system-at-a-glance)
+- [Why](#why) · [The system at a glance](#the-system-at-a-glance) · [Screenshots](#screenshots)
 - [The learning loop](#the-learning-loop-the-system-improves-every-time-you-edit) — the part that compounds
 - [How fit is evaluated (JD ↔ your CV)](#how-fit-is-evaluated-jd--your-cv)
 - [How it sources jobs](#how-it-sources-jobs) · [How drafting works](#how-drafting-works)
@@ -75,11 +59,54 @@ the output of your own judgement is captured and fed back in:
                  └────────────────────────────────────────────────┘
 ```
 
-The interesting design decisions live in three places: **how it sources** (a tiered spread
-bounded by a recency horizon), **how it evaluates fit** (semantic JD↔CV reasoning, not
-keyword matching), and — most importantly — **how it learns from you** (every edit you make
-is captured, distilled, and folded into the next draft). The learning layer is what turns a
-generic drafting tool into one that sounds like *you* after a dozen applications.
+Each stage does a specific job — and each has a deliberate design choice behind it:
+
+**1 · Fetching** — pulls roles three ways behind one normalised `Job` shape: aggregator boards
+via API, niche portals via filtered, rate-limited web indexing, and direct-employer ATS boards
+(Greenhouse / Lever / Ashby / …). *Where it's clever:* coverage is bounded by a **recency
+horizon, not a page count** — a source's first scan grabs the last 7 days, then every refresh
+pulls only what's new *per source*, so first-time coverage is complete and refreshes never
+re-ingest the same roles.
+
+**2 · Ranking** — every role gets a **0–100 fit score** against your CV and summary, with a
+transparent weighted score alongside as a cross-check and no-API fallback. *Where it's clever:*
+a single cheap batched pass (Haiku, with your profile **prompt-cached**) scores the whole board
+for cents, and the model is told to **spread** scores rather than cluster — so the ranking
+actually separates the strong roles from the noise.
+
+**3 · Evaluating** — on any role it classifies each JD requirement **match / stretch / gap**
+against your CV and gives a four-dimension fit breakdown. *Where it's clever:* it reasons
+**semantically, not by keyword** (a deep 0→1 builder scores high even if the JD never uses those
+words), quotes the JD **verbatim** so every gap is auditable, and folds in your saved
+**strengths** (treated as met) and **skips** (negative signals) so it learns what you don't want.
+
+**4 · Drafting** — tailors your CV + cover letter and answers the *real* screening questions,
+marking every change with its original text + rationale. *Where it's clever:* it routes to the
+right **base-CV variant** per role (founder / Web3 / voice-AI / …), keeps the cover letter's
+proven backbone, and **refuses to invent** a fact — leaving you a visible placeholder instead —
+while pulling the matched strengths and honest gaps straight from scoring into the draft.
+
+**5 · Learning** — every edit you accept, every role you skip, and your stated strengths are
+captured and **distilled into reusable rules** that condition the next draft. *Where it's
+clever:* re-distillation runs **right before each generation, but only when something changed** —
+so drafts always reflect your latest edits with no stale scheduled job. This is the part that
+compounds: the first draft is generic, the tenth sounds like you.
+
+## Screenshots
+
+**Scored board with filters** — every role ranked 0–100 against your CV, with the key matching
+drivers it quoted, unmet requirements, work-mode, and Founder-fit / Voice-AI lenses.
+
+![caddie-ai — the scored job board](assets/board.png)
+
+**Review: assessed JD + pre-drafted CV** — the JD's requirements classified match / stretch / gap
+against your CV, a fit breakdown, then your CV tailored to the role with every change highlighted
+(hover any mark to see the original + rationale) and ready to edit.
+
+![caddie-ai — the review screen with an assessed JD and a pre-drafted CV](assets/review.png)
+
+> Screenshots use **sample data** — a demo profile (“Alex Rivera”) scored against live public job
+> listings. No real candidate data.
 
 ---
 
