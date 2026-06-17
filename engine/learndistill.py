@@ -69,3 +69,18 @@ def rebuild() -> dict:
     n = regroup_examples()
     ok = distill_rules()
     return {"examples_entries": n, "rules_distilled": ok}
+
+
+def rebuild_if_stale() -> dict | None:
+    """Re-distil the rule set ONLY when the raw style.md log has changed since the
+    rules were last built. Called right before each draft generation so it always
+    reflects the latest accepted edits — with no schedule (which could draft from
+    an obsolete rule set) and no wasted LLM call when nothing has changed.
+    Returns the rebuild summary if it ran, else None."""
+    raw_p = store.STYLE_PATH
+    rules_p = store.STYLE_RULES_PATH
+    if not raw_p.exists() or not store.read_style().strip():
+        return None
+    if rules_p.exists() and rules_p.stat().st_mtime >= raw_p.stat().st_mtime:
+        return None                      # rules already at least as fresh as the log
+    return rebuild()

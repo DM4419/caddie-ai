@@ -86,6 +86,12 @@ layers, *without ever modifying the raw log*:
 - **`style-examples.md`** — accepted edits grouped *per application*, so the drafter can
   sample a **balanced** set of examples rather than over-fitting to one company.
 
+This re-distillation runs **automatically right before each generation** — but *only* when
+you've added edits since the rules were last built (a cheap timestamp check). So every draft
+reflects your latest corrections without re-distilling on every click, and **without a
+schedule** — a fixed cadence would risk drafting from an obsolete rule set. You can also
+trigger a rebuild manually any time.
+
 **3 · Reinforce — fold it into the next generation**
 
 On every draft, single-passage rewrite, and screening answer, caddie-ai assembles a
@@ -178,6 +184,13 @@ every run, and the window is a single config value you can widen or narrow.
 For a role worth pursuing, the drafter tailors your base CV + cover letter and answers
 screening questions in one pass:
 
+- **Per-gig base-CV routing.** You keep several base CVs, each flagged for a kind of role
+  (e.g. **Founder**, **EIR / founder-welcome**, **Web3 / Blockchain**, **Voice AI**, **0→1
+  build**). Before tailoring, the drafter auto-picks the closest-fit base from the job's
+  detected flags (`_suggest_app_cv`) — so a Web3 role and an enterprise role *start from
+  different foundations*, not one compromise CV. You can override the pick per draft, and
+  it falls back to your single matching CV when no variants exist. (B2B vs B2C is handled as
+  a draft-time **emphasis** you nudge per application, not a separate base.)
 - **Provenance on every change.** Each edited span is emitted as
   `<mark class="chg" data-base="ORIGINAL" data-rat="why">new text</mark>`, so the review UI
   shows an inline diff and a side-by-side compare modal — you see exactly what changed and why.
@@ -290,19 +303,18 @@ ANTHROPIC_API_KEY=sk-ant-...           # required for AI scoring & drafting
 
 ## Roadmap
 
-caddie-ai shipped the **single-base-CV core loop first, on purpose** — prove that
-source → score → draft → learn actually compounds before adding routing complexity. The
-designed-but-deferred next steps:
+The core system — source → score → draft → **learn** — is in place and closed, including
+per-gig base-CV routing and re-distillation before each generation. What's intentionally
+*not* built yet:
 
-- **Multi-base CV router.** Maintain several base CVs, each tuned to a different *employment
-  type / gig* (e.g. **Crypto PM**, **CPO / VP / Head of Product**, **Founding PM**), and route
-  each role to the closest-fit base before tailoring — so a founding-PM role and a Head-of-
-  Product role start from different foundations, not one compromise CV. *(B2B vs B2C is already
-  handled as an **emphasis axis at draft time** rather than a separate CV — you can nudge the
-  drafter per application today.)*
-- **Automated learning cadence.** Re-distil the rule set on a schedule rather than on demand.
-- **Notifications & scheduling** for hands-off daily scans (kept optional and outside the
-  fetch path by design).
+- **Notifications for hands-off scans** — a ping when a high-fit role lands. Kept optional and
+  outside the fetch path by design (fetching stays in Python, never a third-party automation).
+- **Wider board coverage** — more direct-employer ATS adapters and niche portals.
+- **PDF layout fidelity** — richer export templates matching a human-formatted master.
+
+*Deliberately rejected:* a fixed **schedule** for re-distilling the learning rules — drafts
+should always reflect your latest edits, so re-distillation is triggered by change (before a
+generation), never by a clock that could draft from an obsolete rule set.
 
 ## Tech stack
 

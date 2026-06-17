@@ -166,8 +166,15 @@ def _fallback(base_cv: str, base_cl: str, error: str) -> Draft:
 
 def _learning_block(strengths: bool = True) -> str:
     """Assembled learning context: distilled rules + per-application balanced examples
-    + freshest raw edits (+ strengths). No single company dominates."""
-    from . import store
+    + freshest raw edits (+ strengths). No single company dominates.
+
+    Re-distils the rule set first if the raw edit log has changed since it was last
+    built, so every generation reflects the user's most recent accepted edits."""
+    from . import store, learndistill
+    try:
+        learndistill.rebuild_if_stale()
+    except Exception:
+        pass                              # never let a distill hiccup block drafting
     parts = []
     rules = store.read_style_rules().strip()
     if rules:
