@@ -141,7 +141,9 @@ function flagChips(j) {
 }
 function setJobView(v) {
   jobView = v;
-  JOB_TABS.forEach(t => document.getElementById("tab-" + t).classList.toggle("on", v === t));
+  JOB_TABS.forEach(t => { const el = document.getElementById("tab-" + t); if (el) el.classList.toggle("on", v === t); });
+  const sel = document.getElementById("statusSel");
+  if (sel) { const isStatus = ["applied", "skipped", "archived"].includes(v); sel.value = isStatus ? v : ""; sel.classList.toggle("on", isStatus); }
   loadJobs();
   writeHash();
 }
@@ -231,13 +233,11 @@ async function loadJobs() {
   const data = await api(`/api/jobs?archived=${jobView === "archived"}`);
   document.getElementById("cvBanner").classList.toggle("hide", data.base.cv);
   _sources = data.sources || {};
-  const ac = document.getElementById("archCount");
-  if (ac) ac.textContent = data.archived_count ? `(${data.archived_count})` : "";
   const c = data.counts || {};
-  const ap = document.getElementById("appliedCount");
-  if (ap) ap.textContent = c.applied ? `(${c.applied})` : "";
-  const sk = document.getElementById("skippedCount");
-  if (sk) sk.textContent = c.skipped ? `(${c.skipped})` : "";
+  const setOpt = (id, base, n) => { const o = document.getElementById(id); if (o) o.textContent = n ? `${base} (${n})` : base; };
+  setOpt("opt-archived", "Archived", data.archived_count);
+  setOpt("opt-applied", "Applied", c.applied);
+  setOpt("opt-skipped", "Skipped", c.skipped);
   const fo = document.getElementById("founderCount");
   if (fo) fo.textContent = c.founder ? `(${c.founder})` : "";
   const vo = document.getElementById("voiceCount");
@@ -462,15 +462,28 @@ async function openReview(id) {
   document.getElementById("rwTitle").textContent = title;
   document.getElementById("rwH").textContent = title;
   const sCls = job.score >= 80 ? "s-hi" : job.score >= 70 ? "s-mid" : "s-lo";
-  const jdLink = (job.url
-    ? `<a class="jd" href="${esc(job.url)}" target="_blank">Open JD ↗</a>`
-    : '<span class="muted">pasted JD</span>')
-    + ` <a class="jd" style="cursor:pointer" title="Edit the JD/application URL — point it at the apply page to fetch the real screening questions" onclick="editJobUrl()">✎</a>`;
-  const loc = job.location ? ` · ${esc(job.location)}` : "";
-  const sal = job.salary ? ` · <strong style="color:#166534">${esc(job.salary)}</strong>` : "";
-  document.getElementById("rwMeta").innerHTML =
-    `<span class="score ${sCls}">${job.score}</span> · <span class="mode ${modeCls[job.mode] || ""}">${modeLbl[job.mode] || job.mode}</span>${loc}${sal} · ${jdLink} · <span id="liveBadge"></span>`;
-  document.getElementById("bmBtn").textContent = job.bookmarked ? "★ Bookmarked" : "☆ Bookmark";
+  const jdLink = job.url
+    ? `<a href="${esc(job.url)}" target="_blank">Open JD ↗</a>`
+    : "pasted JD";
+  const chips = [
+    `<span class="rw-chip score ${sCls}" title="AI fit score">${job.score} fit</span>`,
+    `<span class="rw-chip">${modeLbl[job.mode] || job.mode}</span>`,
+  ];
+  if (job.location) chips.push(`<span class="rw-chip">${esc(job.location)}</span>`);
+  if (job.salary) chips.push(`<span class="rw-chip" style="color:#166534;font-weight:600">${esc(job.salary)}</span>`);
+  chips.push(`<span class="rw-chip">${jdLink} <a style="cursor:pointer;color:var(--muted)" title="Edit the JD/application URL — point it at the apply page to fetch the real screening questions" onclick="editJobUrl()">✎</a></span>`);
+  document.getElementById("rwMeta").innerHTML = chips.join("") + `<span id="liveBadge"></span>`;
+  document.getElementById("rwActions").innerHTML = `
+    <button class="btn ghost" id="bmBtn" onclick="toggleBookmarkReview()">${job.bookmarked ? "★ Bookmarked" : "☆ Bookmark"}</button>
+    <span class="splitbtn" id="skipSplit">
+      <button class="btn danger main" onclick="skipPlain()">Skip</button>
+      <button class="btn danger caret" onclick="toggleSkipMenu(event)" title="More skip options">▾</button>
+      <div class="menu">
+        <div class="sub">Down-ranking records why you passed so the scorer rates similar roles lower in future.</div>
+        <button onclick="skipDownrank()">Skip &amp; down-rank similar →</button>
+      </div>
+    </span>
+    <button class="btn ok" onclick="setStatus('applied')">Approve &amp; mark applied</button>`;
   let warns = "";
   if (job.language_block)
     warns += `<div class="banner red"><span>🚫 <strong>Language gate:</strong> ${esc(job.language_note)}. Score capped — you'd likely be filtered out. Skip unless the requirement is flexible.</span></div>`;
@@ -1084,6 +1097,13 @@ async function setStatus(status, reason) {
   go("jobs");
   loadJobs();                        // refresh so the job moves to its tab + counts update
 }
+
+// Skip = just skip (default). Skip + down-rank = also record why as a negative anchor.
+function skipPlain() { closeSkipMenu(); setStatus("skipped", ""); }
+function skipDownrank() { closeSkipMenu(); openSkipModal(); }
+function toggleSkipMenu(e) { e.stopPropagation(); const s = document.getElementById("skipSplit"); if (s) s.classList.toggle("open"); }
+function closeSkipMenu() { const s = document.getElementById("skipSplit"); if (s) s.classList.remove("open"); }
+document.addEventListener("click", closeSkipMenu);   // click anywhere closes the skip menu
 // Skipping asks why — the reason becomes a negative scoring anchor (skips.md) that
 // down-ranks similar roles in future fetches.
 function openSkipModal() {

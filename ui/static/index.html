@@ -184,6 +184,30 @@
     #printArea, #printArea *{visibility:visible}
     #printArea{display:block;position:absolute;top:0;left:0;width:100%;padding:40px 48px;font-size:12.5px;line-height:1.6;color:#000}
   }
+  /* ---- detail page: clean minimal SaaS ---- */
+  .rw-top{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);margin-bottom:16px}
+  .rw-top .row1{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .rw-top h2{margin:0;font-size:19px;letter-spacing:-.01em}
+  .rw-chips{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:10px}
+  .rw-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#475569;background:#f6f7f9;border:1px solid var(--line);border-radius:20px;padding:3px 10px}
+  .rw-chip a{color:var(--accent);text-decoration:none}
+  .rw-chip.score{font-weight:700;font-size:12.5px;color:#fff;border:0}
+  .rw-chip.score.s-hi{background:var(--green)} .rw-chip.score.s-mid{background:var(--amber)} .rw-chip.score.s-lo{background:#94a3b8}
+  .rw-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .section-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow);margin-bottom:16px}
+  #review .whyline{border-radius:10px;margin-bottom:16px}
+  /* split skip button */
+  .splitbtn{position:relative;display:inline-flex}
+  .splitbtn .main{border-top-right-radius:0;border-bottom-right-radius:0}
+  .splitbtn .caret{border-top-left-radius:0;border-bottom-left-radius:0;border-left:1px solid #f0cccc;padding:8px 9px}
+  .splitbtn .menu{position:absolute;top:calc(100% + 5px);right:0;background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 14px 34px rgba(0,0,0,.16);padding:6px;z-index:30;min-width:240px;display:none}
+  .splitbtn.open .menu{display:block}
+  .splitbtn .menu button{display:block;width:100%;text-align:left;background:none;border:0;padding:8px 10px;border-radius:8px;font-size:12.5px;cursor:pointer;color:var(--ink);font-weight:600}
+  .splitbtn .menu button:hover{background:#f6f7f9}
+  .splitbtn .menu .sub{font-size:11px;font-weight:400;color:var(--muted);padding:1px 10px 5px}
+  /* board: consolidated status selector */
+  .statussel{border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:12.5px;background:#fff;color:var(--ink);cursor:pointer}
+  .statussel.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 </style>
 </head>
 <body>
@@ -231,9 +255,12 @@
           <button id="tab-founder" onclick="setJobView('founder')">⚑ Founder-fit <span id="founderCount" class="muted"></span></button>
           <button id="tab-voice" onclick="setJobView('voice')">🎙 Voice AI <span id="voiceCount" class="muted"></span></button>
           <button id="tab-bookmarked" onclick="setJobView('bookmarked')">★ Bookmarked <span id="bookmarkedCount" class="muted"></span></button>
-          <button id="tab-applied" onclick="setJobView('applied')">Applied <span id="appliedCount" class="muted"></span></button>
-          <button id="tab-skipped" onclick="setJobView('skipped')">Skipped <span id="skippedCount" class="muted"></span></button>
-          <button id="tab-archived" onclick="setJobView('archived')">Archived <span id="archCount" class="muted"></span></button>
+          <select id="statusSel" class="statussel" onchange="setJobView(this.value)" title="View applied, skipped or archived roles">
+            <option value="">Status…</option>
+            <option value="applied" id="opt-applied">Applied</option>
+            <option value="skipped" id="opt-skipped">Skipped</option>
+            <option value="archived" id="opt-archived">Archived</option>
+          </select>
         </div>
         <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
           <label style="font-size:12px;color:var(--muted)">Posted
@@ -278,20 +305,16 @@
     <!-- REVIEW -->
     <section id="review" class="hide">
       <div class="crumb"><a onclick="go('jobs')">Jobs</a> › <span id="rwTitle"></span></div>
-      <div class="head">
-        <div><h2 id="rwH"></h2><div class="meta" id="rwMeta"></div></div>
-        <div>
-          <button class="btn ghost" id="bmBtn" onclick="toggleBookmarkReview()">☆ Bookmark</button>
-          <button class="btn danger" onclick="setStatus('skipped')">Skip</button>
-          <button class="btn ok" onclick="setStatus('applied')">Approve &amp; mark applied</button>
+      <div class="rw-top">
+        <div class="row1">
+          <div><h2 id="rwH"></h2><div class="rw-chips" id="rwMeta"></div></div>
+          <div class="rw-actions" id="rwActions"></div>
         </div>
+        <div id="langWarn"></div>
       </div>
-
-      <div id="langWarn"></div>
       <div class="whyline" id="whyline"></div>
       <div id="fitAnalysis"></div>
       <div id="jdSection"></div>
-
       <div id="draftArea"></div>
     </section>
 
