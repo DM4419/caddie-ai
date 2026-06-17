@@ -588,6 +588,18 @@ def check_liveness(job_id: str) -> dict:
             "checked_at": job.live_checked_at, "archived": job.archived}
 
 
+def _short_tag(s: str, words: int = 6, cap: int = 42) -> str:
+    """A JD requirement phrase -> a short tag for the jobs-table Unmet column."""
+    s = (s or "").strip().rstrip(".")
+    parts = s.split()
+    out = " ".join(parts[:words])
+    if len(out) > cap:
+        out = out[:cap].rstrip() + "…"
+    elif len(parts) > words:
+        out += "…"
+    return out
+
+
 @app.post("/api/jobs/{job_id}/jd")
 def make_jd(job_id: str) -> dict:
     job = store.get_job(job_id)
@@ -603,9 +615,15 @@ def make_jd(job_id: str) -> dict:
         except Exception as e:
             err = f"Could not fetch the JD page ({type(e).__name__}); showing stored text."
     res = fitscore.classify_requirements(text, store.load_profile(), store.read_base_cv())
+    reqs = [Requirement(**r) for r in res["requirements"]]
     job.jd = JDDoc(text=text, url=job.url, fetched_at=fitscore._now(),
                    error=err or res.get("error", ""),
-                   requirements=[Requirement(**r) for r in res["requirements"]])
+                   requirements=reqs)
+    # Keep the jobs-table Unmet column consistent with the JD GAP: short tags
+    # built from the 'mismatch' requirements (else the scorer's tags remain).
+    gaps = [_short_tag(r.quote) for r in reqs if r.level == "mismatch"]
+    if gaps:
+        job.unmet = gaps[:3]
     store.save_job(job)
     return {"jd": job.jd.model_dump()}
 

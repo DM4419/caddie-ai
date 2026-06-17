@@ -1,14 +1,19 @@
 # caddie-ai
 
-**Stop rewriting your CV for every job.** caddie-ai scans the market, scores each role
-against *your* CV, and hands you a tailored CV, cover letter, and screening answers. You
-review, tweak, and send. It never submits a thing on its own.
+An open-source tool I built for my own job search, then tidied up to share with friends
+going through the same thing.
 
-The twist: it **learns your voice**. Every edit you make trains the next draft, so the
-corrections shrink with each application. And it all runs on your machine — your CV, your
-history, and your API key never leave it.
+Applying to a lot of roles gets repetitive: read the posting, decide if it's worth it, then
+retailor your CV and cover letter. caddie-ai takes the first pass at that. It scans job
+boards, scores how well each role fits your CV, and drafts a tailored CV, cover letter, and
+screening answers. You review, edit, and send everything yourself — it never submits anything
+on its own.
 
-> Like a golf caddie: it reads the course and hands you the right club. You take every swing.
+It runs entirely on your own machine, and it learns from the edits you make, so over time its
+drafts land a little closer to your voice.
+
+> The name: like a golf caddie, it reads the course and hands you the right club. You still
+> take every swing.
 
 ## Screenshots
 

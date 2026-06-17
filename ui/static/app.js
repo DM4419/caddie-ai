@@ -543,18 +543,10 @@ function highlightJd(text, reqs) {
   });
   return out.replace(/\n/g, "<br>");
 }
-// "Unmet qualifications" — sourced from the deep analysis, shown at the bottom
-// of the JD-requirements panel.
-function unmetBlock() {
-  const u = currentJob && currentJob.analysis && currentJob.analysis.unmet;
-  if (!u || !u.length) return "";
-  return `<div class="anh" style="margin-top:14px">Unmet qualifications <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">— requirements you may not meet</span></div>
-    <ul style="margin:6px 0 0;padding-left:18px;color:#b91c1c">${u.map(x => `<li style="font-size:12.5px;line-height:1.5;margin:2px 0">${esc(x)}</li>`).join("")}</ul>`;
-}
 function renderJd(jd) {
   const el = document.getElementById("jdSection");
   if (jd === "button") {
-    el.innerHTML = `<div class="panel p" style="margin-bottom:14px"><button class="btn ghost" onclick="loadJd()">⬇ Assess JD requirements (match / partial / gap)</button>${unmetBlock()}</div>`;
+    el.innerHTML = `<div class="panel p" style="margin-bottom:14px"><button class="btn ghost" onclick="loadJd()">⬇ Assess JD requirements (match / partial / gap)</button></div>`;
     return;
   }
   if (jd === null) {
@@ -575,7 +567,6 @@ function renderJd(jd) {
       <span style="flex:1"></span>
       <button class="btn ghost sm" onclick="loadJd()" title="Re-score the JD requirements against your CV + strengths (e.g. after adding a strength)">↻ Re-score</button></div>
     ${warn}${body}
-    ${unmetBlock()}
   </div>`;
 }
 // Re-render the JD panel in its current state (so the unmet block appears once
