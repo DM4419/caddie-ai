@@ -2039,10 +2039,9 @@ async function uploadBase(kind) {
 
 // weight key -> {label, keyword field (null = mode-based)}
 const FACTORS = [
-  { wkey: "remote", label: "Full remote", kw: null, note: "mode-based (remote / hybrid / onsite)" },
   { wkey: "skills", label: "Skills & quals", kw: "skills" },
   { wkey: "domain", label: "Domain match", kw: "domains" },
-  { wkey: "stage", label: "Stage", kw: "stage_signals" },
+  { wkey: "stage", label: "Stage / operating style", kw: "stage_signals" },
 ];
 let weights = {};
 function renderScoring(w, kw) {

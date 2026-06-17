@@ -3,15 +3,17 @@
 # CV are what the AI scores roles against; `fit_rubric` is how it ranks them.
 # `weights` must sum to 100 (used for the secondary weighted score + no-AI fallback).
 
+# Weights must sum to 100. Location/remoteness is NOT scored — it's a hard gate
+# (see `geo_gate` below), so the score reflects fit, not where the role sits.
 weights:
-  remote: 30
-  skills: 30
+  skills: 50
   domain: 30
-  stage: 10
+  stage: 20
 recency_days: 7
 
 fit_rubric: |
   The candidate is a 0→1 product leader. Score each job 0-100 in TWO steps.
+  Do NOT factor in location or remoteness — that's handled separately by the geo gate.
 
   STEP 1 — SKILLS & QUALIFICATIONS MATCH (the dominant driver of the score).
   Judge how specifically THIS role's stated requirements, responsibilities and
@@ -21,14 +23,16 @@ fit_rubric: |
   never done, a scale they haven't operated at). A weak skills match CAPS the score
   LOW no matter how attractive the tier; a strong, specific match pushes it high.
 
-  STEP 2 — ROLE-TYPE TIER. After the skills match sets the ceiling, place the role
-  in the best-matching tier; higher tiers earn the upper end of that ceiling.
-    TIER 1 (ideal): Remote-anywhere AND an early-stage, founder-led company building
-      0→1 products.
-    TIER 2 (great): Remote-anywhere at a larger company building B2B/AI products.
-    TIER 3: Head of Product, fully remote within Europe.
-    TIER 4: IC PM / Head of Product / VP Product, hybrid in a major hub.
-    TIER 5 (lowest): everything else that still passes the geo gate.
+  STEP 2 — COMPANY OPERATING-STYLE FIT. After the skills match sets the ceiling,
+  place the role by how well the company's operating style suits the candidate;
+  higher tiers earn the upper end of that ceiling.
+    TIER 1 (ideal): early-stage, founder-led company building 0→1 products, where a
+      hands-on builder owns a lot end-to-end.
+    TIER 2 (great): a scaled but still product-led / fast-shipping company building
+      B2B or AI products with real ownership.
+    TIER 3: established company with a strong product culture and a clear 0→1 or
+      turnaround mandate for the role.
+    TIER 4 (lowest): slow, process-heavy or non-product-led environments.
 
   Onsite-only or a domain the candidate has no claim to should land low regardless
   of tier. Never let seniority or an exciting stage rescue a poorly-qualified role.

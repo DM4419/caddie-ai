@@ -27,8 +27,9 @@ BATCH = 10
 JD_CHARS = 600
 CV_CHARS = 3000
 
-DEFAULT_RUBRIC = ("Weigh qualifications/CV match first (biggest factor), then "
-                  "domain fit, then stage (prefers early-stage / 0→1), then remote/UK.")
+DEFAULT_RUBRIC = ("Weigh qualifications/CV match first (biggest factor), then the company's "
+                  "operating style (prefers early-stage, founder-led, hands-on 0→1), then domain "
+                  "fit. Do NOT factor in location or remoteness — that is a separate hard gate.")
 
 # Location / work-mode are handled by the geo gate + the remote score, NOT listed as
 # "unmet qualifications" — so they're filtered out of every unmet/gap list.
@@ -121,10 +122,10 @@ ANALYSIS_FORMAT = """Return ONLY a JSON object:
    role clearly values or requires>", ...],
  "unmet":["<a requirement the JD ASKS FOR that the candidate clearly does NOT
    have — direction is JD→candidate>", ...],
- "breakdown":[{"label":"Qualifications","score":<0-100>,"note":"<= 8 words"},
+ "breakdown":[{"label":"Skills & qualifications","score":<0-100>,"note":"<= 8 words"},
+   {"label":"Operating-style fit","score":<0-100>,"note":"<= 8 words"},
    {"label":"Domain","score":<0-100>,"note":"<= 8 words"},
-   {"label":"Role & stage","score":<0-100>,"note":"<= 8 words"},
-   {"label":"Remote / location","score":<0-100>,"note":"<= 8 words"}]}
+   {"label":"Role & stage","score":<0-100>,"note":"<= 8 words"}]}
 Only include skills that genuinely apply; judge from the role + domain, not just
 literal word matches. "unmet": up to 6 items (each <= 12 words). Each MUST be a
 qualification / skill / experience / must-have EXPLICITLY present in the JD text —

@@ -54,15 +54,20 @@ def score_job(job_dict: dict, profile: dict) -> ScoreResult:
     text = job_dict.get("description", "") or ""
     mode = job_dict.get("mode", "remote")
 
-    factors = [
-        _remote_factor(mode, int(w["remote"])),
-        _ratio_factor("skills", "Skills & quals", int(w["skills"]), text,
-                      profile.get("skills", []), full_at=4),
-        _ratio_factor("domain", "Domain match", int(w["domain"]), text,
-                      profile.get("domains", []), full_at=2),
-        _ratio_factor("stage", "Stage", int(w["stage"]), text,
-                      profile.get("stage_signals", []), full_at=1),
-    ]
+    # Factors are config-driven: a factor only counts if its weight key is present
+    # in profile.yaml. (Remote was removed — location is a hard gate, not a score.)
+    factors = []
+    if "remote" in w:
+        factors.append(_remote_factor(mode, int(w["remote"])))
+    if "skills" in w:
+        factors.append(_ratio_factor("skills", "Skills & quals", int(w["skills"]), text,
+                                     profile.get("skills", []), full_at=4))
+    if "domain" in w:
+        factors.append(_ratio_factor("domain", "Domain match", int(w["domain"]), text,
+                                     profile.get("domains", []), full_at=2))
+    if "stage" in w:
+        factors.append(_ratio_factor("stage", "Stage / operating style", int(w["stage"]), text,
+                                     profile.get("stage_signals", []), full_at=1))
     score = sum(f.points for f in factors)
 
     # Reason = the strongest factors, in plain words.
