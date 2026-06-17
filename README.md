@@ -8,11 +8,27 @@ application yourself.
 > Like a golf caddie: it reads the course, hands you the right club, and tells you the
 > line — but you take every swing. **caddie-ai never auto-submits anything.**
 
+## Screenshots
+
+**Scored board with filters** — every role ranked 0–100 against your CV, with the key
+matching drivers it quoted, unmet requirements, work-mode, and Founder-fit / Voice-AI lenses.
+
+![caddie-ai — the scored job board](assets/board.png)
+
+**Review: assessed JD + pre-drafted CV** — the JD's requirements classified
+match / stretch / gap against your CV, a fit breakdown, then your CV tailored to the role
+with every change highlighted (hover any mark to see the original + rationale) and ready to edit.
+
+![caddie-ai — the review screen with an assessed JD and a pre-drafted CV](assets/review.png)
+
+> Screenshots use **sample data** — a demo profile (“Alex Rivera”) scored against live public
+> job listings. No real candidate data.
+
 ---
 
 ## Contents
 
-- [Why](#why) · [The system at a glance](#the-system-at-a-glance)
+- [Screenshots](#screenshots) · [Why](#why) · [The system at a glance](#the-system-at-a-glance)
 - [The learning loop](#the-learning-loop-the-system-improves-every-time-you-edit) — the part that compounds
 - [How fit is evaluated (JD ↔ your CV)](#how-fit-is-evaluated-jd--your-cv)
 - [How it sources jobs](#how-it-sources-jobs) · [How drafting works](#how-drafting-works)
