@@ -373,9 +373,9 @@ Python 3.11+ · FastAPI · pydantic · httpx · BeautifulSoup · Playwright · t
 
 ## Status
 
-A working personal project, built phase by phase (see `claude-code-runbook.md` and
-`CLAUDE.md` for the build plan and conventions). Shared as a portfolio piece — the public
-copy contains sample data only; no real application history or credentials.
+A working personal project, built phase by phase (see `CLAUDE.md` for the conventions, and
+**[SETUP.md](SETUP.md)** to set it up and customise it). Shared as a portfolio piece — the
+public copy contains sample data only; no real application history or credentials.
 
 ## License
 

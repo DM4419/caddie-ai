@@ -1,112 +1,195 @@
-# caddie-ai — Setup & Customization
+# Caddie AI — Setup & Customisation guide
 
-A locally-run agent that scans job boards, scores roles against **your** CV with AI,
-and drafts tailored applications for you to review. Runs on your Mac; nothing is
-auto-submitted.
+A step-by-step walkthrough to get Caddie AI running and tuned to **you**: install,
+add your credentials, upload your documents in the right order, then customise the
+scoring and sources. Runs locally; nothing is ever auto-submitted.
 
----
-
-## 1. Prerequisites
-- **Python 3.9+** (3.11+ recommended) and `pip`
-- An **Anthropic API key** → https://console.anthropic.com  (needed for AI scoring & drafting)
-- macOS/Linux. ~300 MB free (Playwright downloads a headless browser)
+- [1. Install](#1-install) · [2. Credentials (.env)](#2-credentials-env)
+- [3. First-run setup, in order](#3-first-run-setup-in-order) — the important part
+- [4. Daily use](#4-daily-use) · [5. Optional board keys](#5-optional-board-api-keys)
+- [6. Reset a handed-over copy](#6-reset-a-handed-over-copy) · [7. Troubleshooting](#7-troubleshooting)
 
 ---
 
-## 2. Quick start (easiest)
+## 1. Install
+
+**Prerequisites:** Python 3.9+ (3.11+ recommended), an
+[Anthropic API key](https://console.anthropic.com), macOS/Linux, ~300 MB free
+(Playwright downloads a headless browser for the browser-tier boards).
 
 ```bash
-cd caddie-ai
-echo "ANTHROPIC_API_KEY=sk-ant-..." > .env   # your key: https://console.anthropic.com
+git clone https://github.com/DM4419/caddie-ai && cd caddie-ai
+cp .env.example .env            # you'll fill this in next
 ./run.sh
 ```
 
-`run.sh` installs everything on the first run (virtualenv, dependencies, browser),
-then starts the app and opens http://127.0.0.1:8000. Later runs just start it.
+`run.sh` creates the virtualenv, installs dependencies + the Playwright browser on the
+first run, then starts the app and opens **http://127.0.0.1:8000**. Later runs just start it.
 
-<details><summary>…or set it up manually</summary>
+<details><summary>Manual install instead of <code>run.sh</code></summary>
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python -m playwright install chromium     # for the browser-tier boards
-echo "ANTHROPIC_API_KEY=sk-ant-..." > .env
+python -m playwright install chromium
 uvicorn ui.app:app --port 8000
 ```
 </details>
 
-> **Security:** never commit or share your `.env`. Each person needs their own key.
-> Board logins are never stored in plaintext; the app never submits applications for you.
-
 ---
 
-## 3. Make it *yours* (reset the shared data)
+## 2. Credentials (.env)
 
-The folder you received contains the previous owner's CV, profile and saved jobs.
-Reset them:
+All secrets live in `.env` (gitignored — never commit or share it; each person needs
+their own key). Edit it with any editor, or from the CLI:
 
 ```bash
-# clear saved jobs + tracker + upload state (keeps the curated board list)
-rm -f data/jobs/*.json data/applications.csv data/state.json
-rm -f cv/base-cv.md cv/base-cl.md
+# REQUIRED — AI scoring & drafting (https://console.anthropic.com)
+echo 'ANTHROPIC_API_KEY=sk-ant-...' >> .env
+
+# OPTIONAL — only for these specific boards:
+echo 'ADZUNA_APP_ID=...'      >> .env   # free: https://developer.adzuna.com
+echo 'ADZUNA_APP_KEY=...'     >> .env
+echo 'WEB3_CAREER_TOKEN=...'  >> .env   # https://web3.career/web3-jobs-api
+
+# OPTIONAL — model overrides (sensible defaults already set):
+echo 'ANTHROPIC_MODEL=claude-sonnet-4-6' >> .env   # drafting model
+echo 'FIT_MODEL=claude-haiku-4-5'        >> .env   # fast/cheap fit scorer
 ```
 
-Then either edit **`data/profile.yaml`** directly, or set everything in the **Settings**
-tab of the UI (next section). The two things that matter most:
-- `candidate_summary` — a paragraph about you (the AI scores against this + your CV).
-- `fit_rubric` — how the AI should rank roles (your priorities/tiers).
+Direct-employer boards on Greenhouse / Lever / Ashby / Workable / Recruitee /
+SmartRecruiters / Personio need **no key**. Restart the app after editing `.env`.
+
+The app runs without an API key, but you'll only get the weighted (keyword) score and
+untailored base documents until you add one.
 
 ---
 
-## 4. Run it (every time)
+## 3. First-run setup, in order
 
-```bash
-./run.sh
-```
-Opens **http://127.0.0.1:8000** automatically. (Manual equivalent:
-`source .venv/bin/activate && uvicorn ui.app:app --port 8000`.)
+Open **http://127.0.0.1:8000** and go to the **Settings** tab (left nav). Do these in
+sequence — later steps assume the documents from the earlier ones exist.
 
----
+### Step A — Matching CV (required, do this first)
+**Settings → CV library & documents → Matching CV.** Upload a `.pdf`, `.docx`, `.md`, or
+`.txt` (text is extracted), or click **paste text**. This is the CV every job is **scored**
+against — it is *not* sent in applications, so keep it complete and factual.
 
-## 5. Customize (all in the UI → **Settings**)
+> Until this is uploaded, the Jobs tab shows a "⚠️ Upload your base CV" banner and scores
+> stay low.
 
-| Setting | What it does |
+### Step B — Base cover letter backbone
+**Settings → CV library & documents → Base cover letter.** Upload/paste your cover-letter
+*backbone*: settled prose in your voice with `[BRACKETED]` slots (e.g. `[ROLE]`,
+`[COMPANY]`, `[WHY EXCITED]`). The drafter keeps this prose and only fills the slots — it
+never rewrites your voice, and never invents a fact to fill a slot.
+
+### Step C — Application CV variants (recommended)
+**Settings → CV library & documents → Application CVs → + Add a variant.**
+These are the flavoured CVs the drafter actually tailors and sends (the Matching CV from
+Step A is only for scoring). Add one per direction you target, and tick the **flags** that
+should auto-select it, e.g.:
+
+| Variant name | Tick these flags |
 |---|---|
-| **Base documents** | Upload your CV + cover letter (.md/.txt). Used to score & draft. **Required.** |
-| **AI fit scoring → Rubric** | The primary scorer. Plain-English rules the AI follows to rank 0–100. Edit to change your priorities (tiers, domains, deal-breakers). Save re-scores everything. |
-| **Weighted factors** | The secondary "⚖ Wt" score (and the no-AI fallback): per-factor weights (sum to 100) + the keyword lists each matches. |
-| **Board search queries** | The job titles query-based boards (Adzuna, recruiters) search for. |
-| **Filters** | Geo gate (which work modes/regions to keep — US options are off by default), spoken languages, recency window (days). |
+| Crypto / Web3 | Web3 / Blockchain / crypto |
+| EIR / Founder | EIR / Founder-in-Residence · Ex-founders welcome |
+| ex-Founder · Senior IC | 0→1 build · Ex-founders welcome |
 
-Also edit `candidate_summary` in `data/profile.yaml` (no UI field yet).
+When you draft, Caddie AI auto-picks the variant whose flags best match the role (you can
+override per draft from the "tailored from" dropdown). *(Optional:* add a **Reference PDF**
+— one human-formatted master kept for layout/export reference.)*
+
+### Step D — Candidate summary
+Edit `data/profile.yaml` → `candidate_summary` (a LinkedIn-style paragraph about you; no UI
+field yet). The scorer reasons against this **plus** your Matching CV.
+
+### Step E — AI fit rubric (your priorities)
+**Settings → AI fit scoring → Rubric.** This plain-English rubric is the **primary** scorer
+— it decides the 0–100 fit score. Edit it to encode your tiers, target domains, and
+deal-breakers, then **Save rubric & re-score** (re-scores every stored job). Most of your
+judgement lives here.
+
+### Step F — Weighted factors (secondary score / no-AI fallback)
+**Settings → Weighted factors.** Per-factor weights (**must sum to 100**: remote / skills /
+domain / stage) plus the keyword lists each factor matches. This powers the "⚖ Wt" score and
+the "skills considered" chips, and is the fallback when no API key is set. **Save & re-score.**
+
+### Step G — Filters (gates applied while scanning)
+**Settings → Filters.** Set the **geo gate** (which work modes/regions to keep — US options
+off by default; roles outside the gate are dropped before storage), spoken **languages**, and
+the **recency** window in days (the search horizon). **Save filters.**
+
+> Note: location/work-mode is handled here and in the remote score — it is *not* listed as a
+> qualification "gap".
+
+### Step H — Board search queries
+**Settings → Board search queries.** One job-title query per line; the default applies to all
+query-based boards (Adzuna, recruiters). Add per-board overrides if a board needs different terms.
+
+### Step I — Add your sources
+**Boards tab → Add a source.** Paste a job board, company careers page, or recruiter URL — the
+ATS is auto-detected (Greenhouse/Lever/Ashby/Workable/Recruitee/SmartRecruiters/Personio) and
+scanned, no key needed. Build up the companies you actually want to track.
 
 ---
 
-## 6. Daily use (Jobs tab)
-- **+ Paste a role** — paste a single job URL/description to score it.
-- **Add a source** (Boards tab) — paste a job board, company careers page, or recruiter URL; we detect the ATS (Greenhouse/Lever/Ashby/Workable/Recruitee/SmartRecruiters/Personio) and scan it.
-- **↻ Refresh all sources** — scans every board (slow if you have many company/browser boards; one-line progress shows). Use a group's **↻ Scan group** for a targeted scan.
-- **Tabs/filters** — Active · ⚑ Founder-fit · 🎙 Voice AI · Applied · Skipped · Archived. Sort by AI score, Weighted score, seniority, date, or salary.
-- Click a row → review the AI fit breakdown, matched/unmet requirements, then **generate & download** a tailored CV + cover letter.
+## 4. Daily use
+
+On the **Jobs** tab:
+
+- **+ Paste a role** — paste one job URL or description to fetch + score it immediately.
+- **↻ Refresh all sources** — scans every enabled board (incremental: first scan pulls the
+  recency window, later scans only what's new per board). Use a group's **↻ Scan group** for a
+  targeted scan.
+- **Tabs & filters** — Active · ⚑ Founder-fit · 🎙 Voice AI · ★ Bookmarked, plus a **Status…**
+  dropdown (Applied / Skipped / Archived). Sort by AI score, Weighted score, seniority, date, or salary.
+- **Open a role** to review: the fit breakdown, the JD's requirements classified
+  **match / stretch / gap** against your CV, and the **Unmet** qualification gaps.
+  - *Aggregator link?* (e.g. Adzuna) use **🔎 Find the real application & fetch its questions** to
+    follow it to the real listing.
+  - **About this application** — fill the cover-letter slots, or click **✨ Research & pre-fill**
+    to draft them from the JD/company (review before using).
+  - **Tabs (CV / Cover letter / Screening)** each have their own actions; the Screening tab has a
+    **copy icon** per answer for pasting into the form.
+  - **↻ Regenerate** to draft (auto-picks the best CV variant), **✎ Edit** / **✓ Accept all edits**,
+    then **⬇ Download** (Docx for ATS uploads, PDF, or MD).
+- **Skip** (just skip) or **Skip ▾ → Skip & down-rank** (records why, so similar roles score lower).
+  **Approve & mark applied** when you've sent it.
+
+Every edit you accept teaches Caddie AI your style; the next drafts need fewer corrections.
 
 ---
 
-## 7. Optional board API keys (add to `.env` if you want these boards)
+## 5. Optional board API keys
+
+See [Step 2](#2-credentials-env) — Adzuna (free) and Web3 Career need keys in `.env`; the ATS
+boards do not. Restart the app after adding keys.
+
+---
+
+## 6. Reset a handed-over copy
+
+If you were given a folder containing someone else's data, clear it before using your own:
+
 ```bash
-ADZUNA_APP_ID=...        # https://developer.adzuna.com (free)
-ADZUNA_APP_KEY=...
-WEB3_CAREER_TOKEN=...     # https://web3.career/web3-jobs-api
-# model overrides (optional):
-FIT_MODEL=claude-haiku-4-5          # scorer (fast/cheap); default already set
-ANTHROPIC_MODEL=claude-sonnet-4-6   # drafting model
+rm -f data/jobs/*.json data/applications.csv data/state.json   # saved jobs + tracker + upload state
+rm -f cv/base-cv.md cv/base-cl.md cv/apps/*.md                 # their CVs + variants
 ```
-Greenhouse/Lever/Ashby/Workable/Recruitee/SmartRecruiters/Personio boards need **no key**.
+
+Then redo [Step 3](#3-first-run-setup-in-order). (The curated board list in `data/boards.yaml`
+is kept — edit it or the Boards tab as you like.)
 
 ---
 
-## 8. Troubleshooting
-- **`ERR_CONNECTION_REFUSED`** → the server isn't running; start it (step 4).
-- **Scores all low / "no AI key"** → check `ANTHROPIC_API_KEY` in `.env`.
-- **A board won't scan** → some sites are bot-protected (e.g. Glassdoor/LinkedIn) and can't be scraped; use the company's own careers/ATS page instead.
-- **Playwright errors** → re-run `python -m playwright install chromium`.
+## 7. Troubleshooting
+
+- **`ERR_CONNECTION_REFUSED`** — the server isn't running; `./run.sh`.
+- **Scores all low / "no AI key"** — check `ANTHROPIC_API_KEY` in `.env`, then restart.
+- **"tailored from Matching CV"** — you haven't added Application CV variants yet (Step C); the
+  drafter falls back to the Matching CV until you do.
+- **A board won't scan** — some sites are bot-protected (Glassdoor/LinkedIn) and can't be scraped;
+  add the company's own careers/ATS page instead.
+- **Screening questions can't be fetched** — use **🔎 Find the real application** on the role, or
+  paste them via the Screening tab's **↑ Screening Qs** (works for any ATS).
+- **Playwright errors** — re-run `python -m playwright install chromium`.

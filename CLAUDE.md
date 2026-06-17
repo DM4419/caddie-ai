@@ -3,7 +3,7 @@
 ## What this is
 A locally-run Python agent that helps me apply to product-management roles. It scores job descriptions, drafts a tailored CV + cover letter + screening answers from my base documents, and lets me review and edit before I apply manually. Runs on my Mac; no web host.
 
-## Build order (follow `claude-code-runbook.md`)
+## Build order
 - **Phase 0 (ship first):** paste a job URL → fetch → score → draft over single base CV/CL → review → download PDF. No boards.
 - Then: config + boards → API-tier fetch → score + CSV → drafting → full UI → browser-assisted tier (last).
 - Later only: 3-base CV router, learning loop, scheduling.
