@@ -690,7 +690,7 @@ async function resolveApply(btn) {
     if (r.screening_html) {
       currentJob.draft.screening_html = r.screening_html;
       renderDraftArea(currentJob);
-      dtab({ target: document.querySelector('.tabs2 button:nth-child(3)') }, "d-sq");
+      dtab(null, "d-sq");
       alert(`Found the real listing and fetched ${r.count} live question(s) — the Screening tab now answers the actual application.\n\n${r.url}`);
     } else {
       renderDraftArea(currentJob);
@@ -752,20 +752,20 @@ function renderDraftArea(job) {
     : `<span class="hint">tailored from <strong>${esc(used.name)}</strong></span>`;
   area.innerHTML = `
     ${errBar}
-    <div class="leanbar">
-      <div class="tabs2">
-        <button class="on" onclick="dtab(event,'d-cv')">CV</button>
-        <button onclick="dtab(event,'d-cl')">Cover letter</button>
-        <button onclick="dtab(event,'d-sq')">Screening</button>
-      </div>
-      ${switcher}
+    <div class="doctabs">
+      <button class="dtab on" onclick="dtab(event,'d-cv')">CV</button>
+      <button class="dtab" onclick="dtab(event,'d-cl')">Cover letter</button>
+      <button class="dtab" onclick="dtab(event,'d-sq')">Screening</button>
       <span style="flex:1"></span>
+      ${switcher}
+      <button class="btn ghost sm" onclick="generateDraft(${used.id ? `'${used.id}'` : "''"})" title="Re-draft all three documents from scratch">↻ Regenerate</button>
+    </div>
+    <div class="docactions">
       <button class="btn ghost sm" id="editToggle" onclick="toggleEdit()">✎ Edit</button>
       <button class="btn ghost sm" onclick="acceptAllEdits()" title="Accept all remaining AI changes in the current document (keeps the AI version; leaves orange placeholders for you)">✓ Accept all edits</button>
       <button class="btn ghost sm" data-doc="d-cl" onclick="openPasteCL()" title="Paste your revised cover letter; the app infers why each change was made and learns from it">↑ Paste revised CL</button>
       <button class="btn ghost sm" data-doc="d-sq" onclick="openScreeningQs()" title="Paste the application's screening questions (any ATS) to generate answers">↑ Screening Qs</button>
       <button class="btn ghost sm" data-doc="d-sq" onclick="refreshScreeningQs()" title="Re-fetch the live questions from the job URL and re-answer them (keeps your CV/CL)">↻ Refresh Qs</button>
-      <button class="btn ghost sm" onclick="generateDraft(${used.id ? `'${used.id}'` : "''"})">↻ Regenerate</button>
     </div>
     <details class="dlbar">
       <summary>⬇ Download documents <span class="muted" style="font-weight:400">— attach the <strong>Docx</strong> to ATS uploads; MD is for editing / pasting into text boxes</span></summary>
@@ -1138,13 +1138,16 @@ async function generateDraft(cvId) {
 
 function dtab(e, id) {
   ["d-cv", "d-cl", "d-sq"].forEach(x => document.getElementById(x).classList.toggle("hide", x !== id));
-  e.target.parentNode.querySelectorAll("button").forEach(x => x.classList.remove("on"));
-  e.target.classList.add("on");
+  const tabs = [...document.querySelectorAll(".doctabs .dtab")];
+  tabs.forEach(t => t.classList.remove("on"));
+  const idx = { "d-cv": 0, "d-cl": 1, "d-sq": 2 }[id];
+  const active = (e && e.target && e.target.classList && e.target.classList.contains("dtab")) ? e.target : tabs[idx];
+  if (active) active.classList.add("on");
   syncDocActions(id);
 }
-// Show only the toolbar actions relevant to the active document (CV / CL / Screening).
+// Tier 2: show only the per-tab actions relevant to the active document (CV / CL / Screening).
 function syncDocActions(id) {
-  document.querySelectorAll(".leanbar [data-doc]").forEach(b => b.classList.toggle("hide", b.dataset.doc !== id));
+  document.querySelectorAll(".docactions [data-doc]").forEach(b => b.classList.toggle("hide", b.dataset.doc !== id));
 }
 
 async function toggleBookmarkReview() {
@@ -1397,9 +1400,25 @@ async function refreshScreeningQs() {
     const r = await api(`/api/jobs/${currentJob.id}/screening/refresh`, { method: "POST" });
     currentJob.draft.screening_html = r.screening_html;
     renderDraftArea(currentJob);
-    dtab({ target: document.querySelector('.tabs2 button:nth-child(3)') }, "d-sq");
+    dtab(null, "d-sq");
     alert(`Refreshed ${r.count} live question(s):\n\n- ` + (r.questions || []).join("\n- "));
-  } catch (e) { alert("Refresh failed: " + e.message); }
+    return;
+  } catch (e) { /* direct fetch failed — fall through and try the real listing */ }
+  try {
+    const r = await api(`/api/jobs/${currentJob.id}/resolve-apply`, { method: "POST" });
+    currentJob.url = r.url;
+    if (r.screening_html) {
+      currentJob.draft.screening_html = r.screening_html;
+      renderDraftArea(currentJob);
+      dtab(null, "d-sq");
+      alert(`Followed the link to the real listing and fetched ${r.count} question(s).`);
+    } else {
+      renderDraftArea(currentJob);
+      alert(`Couldn't auto-fetch questions from this posting${r.url ? ` (resolved to ${r.url})` : ""}.\n\nThe apply form may be JavaScript-only or on an unsupported ATS — paste the questions via “↑ Screening Qs” (works for any ATS).`);
+    }
+  } catch (e2) {
+    alert(`Couldn't auto-fetch questions from this posting.\n\nPaste them via “↑ Screening Qs” (works for any ATS).`);
+  }
 }
 async function genScreeningQs() {
   const t = document.getElementById("sqBox").value;
@@ -1414,7 +1433,7 @@ async function genScreeningQs() {
     currentJob.draft.screening_html = r.screening_html;
     closeModal();
     renderDraftArea(currentJob);
-    dtab({ target: document.querySelector('.tabs2 button:nth-child(3)') }, "d-sq");
+    dtab(null, "d-sq");
   } catch (e) { msg.textContent = "✗ " + e.message; }
 }
 
