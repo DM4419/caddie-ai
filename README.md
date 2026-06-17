@@ -1,12 +1,14 @@
 # caddie-ai
 
-**A local-first AI agent for a product manager's job hunt.** It sources roles from across
-the market, scores how well each one fits *you*, and drafts a tailored CV + cover letter +
-screening answers — then gets out of the way so you review, edit, and submit every
-application yourself.
+**Stop rewriting your CV for every job.** caddie-ai scans the market, scores each role
+against *your* CV, and hands you a tailored CV, cover letter, and screening answers. You
+review, tweak, and send. It never submits a thing on its own.
 
-> Like a golf caddie: it reads the course, hands you the right club, and tells you the
-> line — but you take every swing. **caddie-ai never auto-submits anything.**
+The twist: it **learns your voice**. Every edit you make trains the next draft, so the
+corrections shrink with each application. And it all runs on your machine — your CV, your
+history, and your API key never leave it.
+
+> Like a golf caddie: it reads the course and hands you the right club. You take every swing.
 
 ## Screenshots
 
