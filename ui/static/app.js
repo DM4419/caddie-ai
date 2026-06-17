@@ -675,8 +675,32 @@ function aggregatorName(url) {
 function aggWarn(job) {
   const a = aggregatorName(job.url || "");
   if (!a) return "";
-  return `<div class="banner" style="background:#fff7ed;border-color:#fdba74;color:#9a3412;margin-bottom:10px">
-    <span>⚠️ <strong>${a} aggregator link</strong> — not the real application, so screening questions can't be auto-fetched (the ones shown are inferred). Click <strong>✎</strong> by the JD link to set the actual apply URL → <strong>↻ Refresh Qs</strong>, or paste them via <strong>↑ Screening Qs</strong>.</span></div>`;
+  return `<div class="hint" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+    <span class="muted">${a} aggregator link — screening answers below are inferred.</span>
+    <button class="btn sm" type="button" onclick="resolveApply(this)">🔎 Find the real application &amp; fetch its questions</button>
+    <span id="resolveMsg" class="hint"></span></div>`;
+}
+async function resolveApply(btn) {
+  if (!currentJob) return;
+  const msg = document.getElementById("resolveMsg");
+  if (msg) msg.innerHTML = '<span class="spin"></span>following the link & checking for questions…';
+  try {
+    const r = await api(`/api/jobs/${currentJob.id}/resolve-apply`, { method: "POST" });
+    currentJob.url = r.url;
+    if (r.screening_html) {
+      currentJob.draft.screening_html = r.screening_html;
+      renderDraftArea(currentJob);
+      dtab({ target: document.querySelector('.tabs2 button:nth-child(3)') }, "d-sq");
+      alert(`Found the real listing and fetched ${r.count} live question(s) — the Screening tab now answers the actual application.\n\n${r.url}`);
+    } else {
+      renderDraftArea(currentJob);
+      alert(`Resolved to the real listing:\n${r.url}\n\n` + (r.count
+        ? `Found ${r.count} question(s).`
+        : "No questions were auto-fetchable there (the apply form may be JS-only or an unsupported ATS). The shown answers stay inferred — you can paste the real ones via ↑ Screening Qs."));
+    }
+  } catch (e) {
+    if (msg) msg.textContent = "✗ " + e.message;
+  }
 }
 
 // Optional cover-letter inputs. The letter never invents a trigger, contact, or
@@ -688,6 +712,7 @@ function ctxFormHtml(job) {
   return `<details class="clctx" ${(c.why_excited||c.gap||c.cultural_fit||c.emphasis) ? "open" : ""} style="margin:10px 0;text-align:left">
     <summary class="hint">About this application <span class="muted">— optional; fills the letter's slots so it doesn't leave blanks</span></summary>
     <div style="display:grid;gap:6px;margin-top:8px">
+      <div style="display:flex;align-items:center;gap:8px"><button class="btn ghost sm" type="button" onclick="researchPrefill(this)" title="Draft these notes from the JD + what's known about the company, for you to review and edit">✨ Research &amp; pre-fill</button><span id="rcMsg" class="hint"></span></div>
       <label class="hint">Opener
         <select id="dcOpener" style="border:1px solid var(--line);border-radius:6px;padding:3px 6px;margin-left:4px">
           <option value="auto" ${o("auto")}>Auto (by job flags)</option>
@@ -737,9 +762,9 @@ function renderDraftArea(job) {
       <span style="flex:1"></span>
       <button class="btn ghost sm" id="editToggle" onclick="toggleEdit()">✎ Edit</button>
       <button class="btn ghost sm" onclick="acceptAllEdits()" title="Accept all remaining AI changes in the current document (keeps the AI version; leaves orange placeholders for you)">✓ Accept all edits</button>
-      <button class="btn ghost sm" onclick="openPasteCL()" title="Paste your revised cover letter; the app infers why each change was made and learns from it">↑ Paste revised CL</button>
-      <button class="btn ghost sm" onclick="openScreeningQs()" title="Paste the application's screening questions (any ATS) to generate answers">↑ Screening Qs</button>
-      <button class="btn ghost sm" onclick="refreshScreeningQs()" title="Re-fetch the live questions from the job URL and re-answer them (keeps your CV/CL)">↻ Refresh Qs</button>
+      <button class="btn ghost sm" data-doc="d-cl" onclick="openPasteCL()" title="Paste your revised cover letter; the app infers why each change was made and learns from it">↑ Paste revised CL</button>
+      <button class="btn ghost sm" data-doc="d-sq" onclick="openScreeningQs()" title="Paste the application's screening questions (any ATS) to generate answers">↑ Screening Qs</button>
+      <button class="btn ghost sm" data-doc="d-sq" onclick="refreshScreeningQs()" title="Re-fetch the live questions from the job URL and re-answer them (keeps your CV/CL)">↻ Refresh Qs</button>
       <button class="btn ghost sm" onclick="generateDraft(${used.id ? `'${used.id}'` : "''"})">↻ Regenerate</button>
     </div>
     <details class="dlbar">
@@ -772,6 +797,22 @@ function renderDraftArea(job) {
     <div id="d-sq" class="doc hide">${d.screening_html}</div>`;
   editMode = false;
   decorateScreening();
+  syncDocActions("d-cv");
+}
+
+// Draft the "About this application" notes from the JD/company (user reviews & edits).
+async function researchPrefill(btn) {
+  if (!currentJob) return;
+  const msg = document.getElementById("rcMsg");
+  if (msg) msg.innerHTML = '<span class="spin"></span>researching the role…';
+  try {
+    const r = await api(`/api/jobs/${currentJob.id}/research-context`, { method: "POST" });
+    if (r.error) { if (msg) msg.textContent = "✗ " + r.error; return; }
+    const set = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+    set("dcWhy", r.why_excited); set("dcFit", r.cultural_fit);
+    set("dcEmph", r.emphasis); set("dcGap", r.gap);
+    if (msg) msg.textContent = "✓ pre-filled — review & edit, then ↻ Regenerate";
+  } catch (e) { if (msg) msg.textContent = "✗ " + e.message; }
 }
 
 // Per-question copy button on screening answers (UI only — stripped from exports & saves).
@@ -1099,6 +1140,11 @@ function dtab(e, id) {
   ["d-cv", "d-cl", "d-sq"].forEach(x => document.getElementById(x).classList.toggle("hide", x !== id));
   e.target.parentNode.querySelectorAll("button").forEach(x => x.classList.remove("on"));
   e.target.classList.add("on");
+  syncDocActions(id);
+}
+// Show only the toolbar actions relevant to the active document (CV / CL / Screening).
+function syncDocActions(id) {
+  document.querySelectorAll(".leanbar [data-doc]").forEach(b => b.classList.toggle("hide", b.dataset.doc !== id));
 }
 
 async function toggleBookmarkReview() {

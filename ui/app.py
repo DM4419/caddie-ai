@@ -451,6 +451,50 @@ def refresh_screening(job_id: str) -> dict:
     return {"screening_html": html, "count": len(qs), "questions": [q["text"] for q in qs]}
 
 
+@app.post("/api/jobs/{job_id}/resolve-apply")
+def resolve_apply(job_id: str) -> dict:
+    """Follow an aggregator (e.g. Adzuna) redirect to the real listing, set it as the
+    job URL, and try to auto-fetch the live screening questions from it."""
+    import httpx
+    job = store.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    if not job.url:
+        raise HTTPException(400, "No URL to resolve.")
+    try:
+        r = httpx.get(job.url, follow_redirects=True, timeout=20, headers=questions.UA)
+        final = str(r.url)
+    except Exception as e:
+        raise HTTPException(502, f"Couldn't reach the link ({type(e).__name__}).")
+    job.url = final
+    qs = questions.fetch_questions(final)
+    out = {"url": final, "count": len(qs), "questions": [q["text"] for q in qs], "screening_html": ""}
+    if qs and job.draft:
+        chosen = _suggest_app_cv(job)
+        cv = store.get_app_cv_text(chosen["id"]) if chosen else store.read_base_cv()
+        html = draft_mod.generate_screening(
+            {"role": job.role, "company": job.company, "description": job.description}, cv, qs)
+        if html:
+            job.draft.screening_html = html
+            out["screening_html"] = html
+    store.save_job(job)
+    return out
+
+
+@app.post("/api/jobs/{job_id}/research-context")
+def research_context(job_id: str) -> dict:
+    """Draft suggested 'About this application' notes (why-excited, cultural fit,
+    emphasis, the honest gap) from the JD + company, for the user to review and edit."""
+    job = store.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    unmet = (job.analysis.unmet if job.analysis else None) or job.unmet or []
+    return draft_mod.research_application_context(
+        {"role": job.role, "company": job.company, "mode": job.mode,
+         "location": job.location, "description": job.description},
+        store.load_profile(), store.read_base_cv(), unmet)
+
+
 class CLInferIn(BaseModel):
     new_text: str = ""
 

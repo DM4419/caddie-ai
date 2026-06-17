@@ -259,6 +259,53 @@ def generate_screening(job_dict: dict, cv: str, questions: list) -> str:
     return _split_screening(_strip_prose_emdash(raw))
 
 
+RESEARCH_SYSTEM = (
+    "You help a candidate prepare a job application. From the JOB DESCRIPTION and what you "
+    "reliably know about the COMPANY, draft short, honest prep notes the candidate can edit. "
+    "Ground everything in the JD/company mission and the candidate's real CV — NEVER invent "
+    "specific facts (no made-up funding rounds, product launches, metrics, or mutual contacts). "
+    "If unsure of a concrete fact, stay general. British spelling, no em-dashes. Return ONLY JSON:\n"
+    '{"why_excited":"1-2 sentences: a genuine, specific reason this role/company fits the candidate, '
+    'tied to the JD/mission (no invented news)",\n'
+    ' "cultural_fit":"1 sentence: one true working-style alignment between the candidate and this team, '
+    'drawn from the JD tone + the CV",\n'
+    ' "emphasis":"2-3 JD themes the candidate should accentuate and tie hardest to their experience, '
+    'as a short phrase list"}')
+
+
+def research_application_context(job: dict, profile: dict, cv_text: str, unmet: list) -> dict:
+    """Suggested 'About this application' notes drafted from the JD + company, for the
+    user to review/edit. Grounded, never fabricated; the gap is taken from scoring."""
+    import json
+    out = {"why_excited": "", "cultural_fit": "", "emphasis": "",
+           "gap": (unmet[0] if unmet else ""), "error": ""}
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        out["error"] = "No ANTHROPIC_API_KEY set."
+        return out
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        summary = (profile.get("candidate_summary") or "").strip()
+        user = (f"COMPANY: {job.get('company','')}\nROLE: {job.get('role','')} "
+                f"({job.get('mode','')} {job.get('location','')})\n\n"
+                f"CANDIDATE SUMMARY:\n{summary}\n\nCANDIDATE CV:\n{(cv_text or '')[:2500]}\n\n"
+                f"JOB DESCRIPTION:\n{(job.get('description','') or '')[:5000]}\n\nDraft the notes now.")
+        msg = client.messages.create(model=DEFAULT_MODEL, max_tokens=700,
+                                     system=RESEARCH_SYSTEM,
+                                     messages=[{"role": "user", "content": user}])
+        raw = "".join(b.text for b in msg.content if b.type == "text").strip()
+        s, e = raw.find("{"), raw.rfind("}")
+        data = json.loads(raw[s:e + 1] if s != -1 else raw)
+        out["why_excited"] = str(data.get("why_excited", ""))[:600]
+        out["cultural_fit"] = str(data.get("cultural_fit", ""))[:400]
+        emph = data.get("emphasis", "")
+        out["emphasis"] = ("; ".join(emph) if isinstance(emph, list) else str(emph))[:600]
+    except Exception as ex:
+        out["error"] = f"Research failed: {type(ex).__name__}: {ex}"
+    return out
+
+
 def _insert_default_pagebreaks(cv_html: str) -> str:
     """Insert the user's standard page breaks: before the 2nd Professional
     Experience role, and before Education. Skipped if the CV already has breaks
