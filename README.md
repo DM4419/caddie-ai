@@ -21,10 +21,33 @@ leave it.
 
 ## What it does
 
-1. **Fetch** — paste a job URL (or point it at a board) and it pulls a clean, normalised job description.
+1. **Source** — pull roles from across the market through a tiered acquisition system (paste a single URL, *or* let it sweep your configured sources): global aggregator boards via their **APIs**, targeted niche portals via **allowed, filtered web indexing**, and **direct-employer** career pages via their ATS. Everything lands in one normalised job shape.
 2. **Score** — every role gets an **AI fit score (0–100)** judged against your CV and a plain-English rubric you control, plus a transparent **weighted score** (remote / skills / domain / stage) as a cross-check and no-AI fallback.
 3. **Draft** — for roles worth it, it tailors your base CV + cover letter and answers screening questions, recording each change as *base text + tailored text + rationale* so you can see exactly what it changed and why.
 4. **Review & submit** — you compare, edit, download (PDF/DOCX), and apply manually. Applications are tracked in a local CSV.
+
+## How it sources jobs
+
+The interesting part isn't any one fetch — it's the **spread**. caddie-ai reaches the
+market three complementary ways, each behind one normalised `Job` shape so scoring and
+drafting don't care where a role came from:
+
+- **Global aggregator boards — via API.** Public/official feeds (e.g. RemoteOK, Working Nomads, Adzuna, Web3 Career) queried straight through their APIs. Broad reach, cheap, robust.
+- **Targeted niche portals — via allowed, filtered web indexing.** For boards without an API, a rate-limited Playwright tier renders the board's *own* filtered search and indexes **only the matching rows**. It never crawls a full site — it rides the board's filters rather than scraping everything.
+- **Direct-employer companies — via their ATS.** Company career pages on Greenhouse / Lever / Ashby / Workable / Recruitee / SmartRecruiters / Personio are read through the ATS's no-key endpoints, so you track specific companies you care about, not just aggregators.
+
+(Plus the simplest path: paste a single job URL and it normalises that one role.)
+
+### Depth of search = a recency horizon, not a fixed page count
+
+caddie-ai doesn't fetch "the last N pages" or "100 newest rows" and call it done. Each
+source is bounded by a **time horizon** (`recency_days`, default **7**), and it's **incremental per source**:
+
+- **First scan of a source** → it auto-pulls the full backlog inside the horizon (everything posted in the last 7 days).
+- **Every refresh after that** → it only pulls what's *new since that source's own last scan* — tracked per board, so a busy board and a quiet one each advance independently.
+
+The result is comprehensive first-time coverage without re-ingesting the same roles on
+every run, and the window is a single config value you can widen or narrow.
 
 ## Architecture
 
