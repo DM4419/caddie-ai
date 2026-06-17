@@ -14,8 +14,8 @@ __pycache__/
 # NOTE: if you swap in your real CV/profile and want them private, add
 #   cv/base-cv.md  cv/base-cl.md  data/profile.yaml
 # to this file too.
-data/jobs/
-data/drafts/
+data/jobs/*
+data/drafts/*
 data/applications.csv
 data/state.json
 data/draft-backup-*.json
@@ -24,7 +24,7 @@ data/style-examples.md
 data/style-rules.md
 data/strengths.md
 data/skips.md
-cv/apps/
+cv/apps/*
 cv/reference.pdf
 
 # Keep the placeholder dirs in git
