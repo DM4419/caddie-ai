@@ -610,6 +610,11 @@ def make_analysis(job_id: str) -> dict:
          "mode": job.mode, "description": job.description},
         store.load_profile(), store.read_base_cv(), score=job.score)
     job.analysis = Analysis(**data)
+    # Keep the jobs-table Unmet column showing the JD gap: short tags from the
+    # analysis's unmet (JD→candidate) requirements.
+    gaps = [_short_tag(u) for u in (data.get("unmet") or []) if str(u).strip()]
+    if gaps:
+        job.unmet = gaps[:3]
     store.save_job(job)
     return {"analysis": job.analysis.model_dump()}
 
