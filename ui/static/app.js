@@ -1194,21 +1194,52 @@ function closeSkipMenu() { const s = document.getElementById("skipSplit"); if (s
 document.addEventListener("click", closeSkipMenu);   // click anywhere closes the skip menu
 // Skipping asks why — the reason becomes a negative scoring anchor (skips.md) that
 // down-ranks similar roles in future fetches.
+const SKIP_REASONS = [
+  ["too_tech", "Too technical"],
+  ["strict_domain", "Narrow / strict domain"],
+  ["culture", "Culture / working style"],
+  ["applied_other", "Applied in another role"],
+  ["other", "Other…"],
+];
+const SKIP_LABELS = Object.fromEntries(SKIP_REASONS);
+
+// Best guess at why this role is being passed, to pre-select the dropdown.
+function suggestSkipReason() {
+  const j = currentJob || {};
+  const co = (j.company || "").trim().toLowerCase();
+  if (typeof appliedCompanies === "function" && appliedCompanies().has(co)) return "applied_other";
+  const blob = ((j.unmet || []).join(" ") + " " + (j.role || "") + " " + (j.role_note || "")).toLowerCase();
+  if (/technical|engineer|coding|software dev|hands-on cod|deep tech/.test(blob) || j.role_off_target) return "too_tech";
+  const dom = (j.factors || []).find(f => f.key === "domain");
+  if (/domain|industry|sector|vertical|category|fintech|healthcare|biotech|gaming/.test(blob)
+      || (dom && dom.weight && dom.points / dom.weight < 0.34)) return "strict_domain";
+  return "other";
+}
+
 function openSkipModal() {
+  const pre = suggestSkipReason();
+  const opts = SKIP_REASONS.map(([v, l]) => `<option value="${v}" ${v === pre ? "selected" : ""}>${l}</option>`).join("");
   document.getElementById("modal").innerHTML = `
    <div class="overlay" onclick="if(event.target===this)closeModal()">
     <div class="modal">
-      <div class="mh"><h3>Skip this role</h3><button class="x" onclick="closeModal()">×</button></div>
+      <div class="mh"><h3>Skip &amp; down-rank</h3><button class="x" onclick="closeModal()">×</button></div>
       <div class="mb">
-        <div class="rat">Why are you passing? This becomes a <strong>negative anchor</strong> — future roles with the same off-putting traits score lower. (Optional, but it makes scoring smarter.)</div>
-        <textarea class="ta" id="skipReason" style="height:90px" placeholder="e.g. 'too technical / requires hands-on coding', 'pure growth-marketing role', 'agency not product', 'salary band too junior'"></textarea>
+        <div class="rat">Why are you passing? This becomes a <strong>negative anchor</strong> — future roles with the same trait score lower.</div>
+        <label class="fieldlab">Reason</label>
+        <select id="skipReasonCat" onchange="document.getElementById('skipOtherWrap').classList.toggle('hide', this.value !== 'other')"
+          style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:4px 0;font-size:13px">${opts}</select>
+        <div id="skipOtherWrap" class="${pre === 'other' ? '' : 'hide'}">
+          <input id="skipReasonOther" placeholder="Your reason…" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:13px"></div>
       </div>
       <div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button>
-        <button class="btn danger" onclick="confirmSkip()">Skip role</button></div>
+        <button class="btn danger" onclick="confirmSkip()">Skip &amp; down-rank</button></div>
     </div></div>`;
 }
 function confirmSkip() {
-  const reason = (document.getElementById("skipReason").value || "").trim();
+  const cat = document.getElementById("skipReasonCat").value;
+  const reason = cat === "other"
+    ? (document.getElementById("skipReasonOther").value || "").trim()
+    : (SKIP_LABELS[cat] || "");
   closeModal();
   setStatus("skipped", reason);
 }

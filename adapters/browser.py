@@ -261,6 +261,13 @@ def heuristic_jobs(html: str, base_url: str, source: str) -> list:
     base_path = unquote(urlparse(base_url).path).rstrip("/")
     jobs, seen = [], set()
     for c in cards:
+        # skip cards explicitly marked filled/expired (e.g. intelligentpeople.co.uk's
+        # `div.expired--message`: "this job is now filled and no longer available")
+        if c.find(class_=re.compile(r"expired", re.I)) or re.search(
+                r"no longer available|now filled|position (?:has been )?filled|"
+                r"this (?:job|position|role|vacancy) (?:has |is )?(?:expired|closed|filled)",
+                _txt(c), re.I):
+            continue
         # first title/heading whose text isn't a premium "Unlock…" style CTA
         cands = (c.find_all(class_=re.compile(r"job.?title|title", re.I))
                  + c.find_all(["h1", "h2", "h3", "h4"]))
