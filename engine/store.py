@@ -369,6 +369,37 @@ def append_skip(role: str, company: str, reason: str) -> None:
                 f"- {(reason or '').strip()[:600]}\n")
 
 
+# ---- likes.md: positive ROLE anchors — "more roles like this" (Skip + Train ↑) ----
+LIKES_PATH = DATA / "likes.md"
+
+
+def read_likes() -> str:
+    return LIKES_PATH.read_text() if LIKES_PATH.exists() else ""
+
+
+def read_likes_recent(cap: int = 8000) -> str:
+    md = read_likes()
+    if len(md) <= cap:
+        return md
+    tail = md[-cap:]
+    cut = tail.find("\n## ")
+    return tail[cut + 1:] if cut != -1 else tail
+
+
+def append_like(role: str, company: str, reason: str) -> None:
+    """Record a role the user skipped but WANTS MORE OF — fed to scoring to up-rank similar roles."""
+    if not (reason or "").strip():
+        return
+    ensure_dirs()
+    if not LIKES_PATH.exists():
+        LIKES_PATH.write_text("# Wanted-role reasons (positive scoring anchors)\n\n"
+                              "Roles the user skipped but wants MORE of. Fed to AI fit scoring to "
+                              "up-rank roles that share the same attractive traits.\n")
+    with LIKES_PATH.open("a") as f:
+        f.write(f"\n## {today()} — {role or '?'} @ {company or '?'}\n"
+                f"- {(reason or '').strip()[:600]}\n")
+
+
 def write_style(text: str) -> None:
     ensure_dirs()
     STYLE_PATH.write_text(text)

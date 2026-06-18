@@ -51,6 +51,16 @@ def _negative_anchors() -> str:
             "score and the one-line reason:\n" + skips)
 
 
+def _promote_anchors() -> str:
+    from . import store
+    likes = store.read_likes_recent(8000).strip()
+    if not likes:
+        return ""
+    return ("\n\nPROMOTE ANCHORS — the candidate skipped these roles for unrelated reasons but "
+            "WANTS MORE LIKE THEM. Up-rank a job that shares the same attractive traits, and "
+            "reflect that in the score and the one-line reason:\n" + likes)
+
+
 def _positive_anchors() -> str:
     from . import store
     s = store.read_strengths().strip()
@@ -64,7 +74,7 @@ def _score_system(profile: dict) -> str:
     rubric = profile.get("fit_rubric") or DEFAULT_RUBRIC
     return ("You score how well each job fits ONE specific candidate, 0-100.\n\n"
             "HOW TO WEIGH FIT (follow strictly):\n" + rubric + _negative_anchors()
-            + _positive_anchors() + "\n\n" + SCORE_FORMAT)
+            + _promote_anchors() + _positive_anchors() + "\n\n" + SCORE_FORMAT)
 
 
 SCORE_FORMAT = """100 = ideal; ~50 = plausible; <30 = poor fit. Be discriminating —
@@ -109,8 +119,8 @@ def _analysis_system(profile: dict) -> str:
     rubric = profile.get("fit_rubric") or DEFAULT_RUBRIC
     return ("You analyze fit between a candidate and ONE job, for the candidate. "
             "Be specific, concrete, and honest. The fit score was assigned using "
-            "this rubric — stay consistent with it:\n" + rubric + _positive_anchors()
-            + "\n\n" + ANALYSIS_FORMAT)
+            "this rubric — stay consistent with it:\n" + rubric + _negative_anchors()
+            + _promote_anchors() + _positive_anchors() + "\n\n" + ANALYSIS_FORMAT)
 
 
 ANALYSIS_FORMAT = """Return ONLY a JSON object:

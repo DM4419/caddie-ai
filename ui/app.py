@@ -697,7 +697,8 @@ def make_jd(job_id: str) -> dict:
 
 class StatusIn(BaseModel):
     status: str
-    reason: str = ""        # for skips: why — becomes a negative scoring anchor
+    reason: str = ""        # for skips: why — becomes a scoring anchor
+    anchor: str = ""        # "up" -> promote (likes.md); else down-rank (skips.md)
 
 
 @app.post("/api/jobs/{job_id}/status")
@@ -707,7 +708,10 @@ def set_status(job_id: str, body: StatusIn) -> dict:
         raise HTTPException(404, "Job not found")
     job.status = body.status
     if body.status == "skipped" and (body.reason or "").strip():
-        store.append_skip(job.role, job.company, body.reason)
+        if body.anchor == "up":
+            store.append_like(job.role, job.company, body.reason)   # promote: more like this
+        else:
+            store.append_skip(job.role, job.company, body.reason)   # down-rank similar
     store.save_job(job)
     return {"ok": True, "status": job.status}
 

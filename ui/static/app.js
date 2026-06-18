@@ -492,8 +492,8 @@ async function openReview(id) {
       <button class="btn danger main" onclick="skipPlain()">Skip</button>
       <button class="btn danger caret" onclick="toggleSkipMenu(event)" title="More skip options">▾</button>
       <div class="menu">
-        <div class="sub">Down-ranking records why you passed so the scorer rates similar roles lower in future.</div>
-        <button onclick="skipDownrank()">Skip &amp; down-rank similar →</button>
+        <div class="sub">Plain Skip changes no rankings. “Train” teaches the scorer from this role — fewer or more like it.</div>
+        <button onclick="skipTrain()">Skip + Train…</button>
       </div>
     </span>
     <button class="btn ok" onclick="setStatus('applied')">Approve &amp; mark applied</button>`;
@@ -1175,20 +1175,21 @@ async function toggleBookmarkReview() {
   document.getElementById("bmBtn").textContent = v ? "★ Bookmarked" : "☆ Bookmark";
 }
 
-async function setStatus(status, reason) {
+async function setStatus(status, reason, anchor) {
   if (!currentJob) return;
-  if (status === "skipped" && reason === undefined) { openSkipModal(); return; }
+  if (status === "skipped" && reason === undefined) { openTrainModal(); return; }
   await api(`/api/jobs/${currentJob.id}/status`, {
     method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status, reason: reason || "" }),
+    body: JSON.stringify({ status, reason: reason || "", anchor: anchor || "" }),
   });
   go("jobs");
   loadJobs();                        // refresh so the job moves to its tab + counts update
 }
 
-// Skip = just skip (default). Skip + down-rank = also record why as a negative anchor.
+// Plain Skip = no ranking impact (default). Skip + Train teaches the scorer:
+// "fewer like this" -> skips.md (down-rank) or "more like this" -> likes.md (promote).
 function skipPlain() { closeSkipMenu(); setStatus("skipped", ""); }
-function skipDownrank() { closeSkipMenu(); openSkipModal(); }
+function skipTrain() { closeSkipMenu(); openTrainModal(); }
 function toggleSkipMenu(e) { e.stopPropagation(); const s = document.getElementById("skipSplit"); if (s) s.classList.toggle("open"); }
 function closeSkipMenu() { const s = document.getElementById("skipSplit"); if (s) s.classList.remove("open"); }
 document.addEventListener("click", closeSkipMenu);   // click anywhere closes the skip menu
@@ -1216,32 +1217,59 @@ function suggestSkipReason() {
   return "other";
 }
 
-function openSkipModal() {
-  const pre = suggestSkipReason();
-  const opts = SKIP_REASONS.map(([v, l]) => `<option value="${v}" ${v === pre ? "selected" : ""}>${l}</option>`).join("");
+// "More like this" reasons (positive anchor → up-rank similar roles).
+const LIKE_REASONS = [
+  ["ideal_stage", "Ideal company / stage"],
+  ["perfect_domain", "Perfect domain"],
+  ["great_mission", "Great mission / product"],
+  ["right_role", "Right role type"],
+  ["other", "Other…"],
+];
+const LIKE_LABELS = Object.fromEntries(LIKE_REASONS);
+let _trainDir = "down";
+
+function openTrainModal() {
+  _trainDir = "down";
   document.getElementById("modal").innerHTML = `
    <div class="overlay" onclick="if(event.target===this)closeModal()">
     <div class="modal">
-      <div class="mh"><h3>Skip &amp; down-rank</h3><button class="x" onclick="closeModal()">×</button></div>
+      <div class="mh"><h3>Skip + Train</h3><button class="x" onclick="closeModal()">×</button></div>
       <div class="mb">
-        <div class="rat">Why are you passing? This becomes a <strong>negative anchor</strong> — future roles with the same trait score lower.</div>
-        <label class="fieldlab">Reason</label>
-        <select id="skipReasonCat" onchange="document.getElementById('skipOtherWrap').classList.toggle('hide', this.value !== 'other')"
-          style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:4px 0;font-size:13px">${opts}</select>
-        <div id="skipOtherWrap" class="${pre === 'other' ? '' : 'hide'}">
-          <input id="skipReasonOther" placeholder="Your reason…" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:13px"></div>
+        <div class="rat">Teach the scorer from this role. (Plain <strong>Skip</strong> changes no rankings.)</div>
+        <div class="tabs2" style="margin-bottom:10px">
+          <button id="train-down" class="on" type="button" onclick="setTrainDir('down')">👎 Fewer like this</button>
+          <button id="train-up" type="button" onclick="setTrainDir('up')">👍 More like this</button>
+        </div>
+        <label class="fieldlab" id="trainReasonLabel"></label>
+        <select id="trainReasonCat" onchange="document.getElementById('trainOtherWrap').classList.toggle('hide', this.value !== 'other')"
+          style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:4px 0;font-size:13px"></select>
+        <div id="trainOtherWrap" class="hide">
+          <input id="trainReasonOther" placeholder="Your reason…" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:6px;font-size:13px"></div>
       </div>
       <div class="mf"><button class="btn ghost" onclick="closeModal()">Cancel</button>
-        <button class="btn danger" onclick="confirmSkip()">Skip &amp; down-rank</button></div>
+        <button class="btn danger" onclick="confirmTrain()">Skip + Train</button></div>
     </div></div>`;
+  setTrainDir("down");
 }
-function confirmSkip() {
-  const cat = document.getElementById("skipReasonCat").value;
+function setTrainDir(dir) {
+  _trainDir = dir;
+  document.getElementById("train-down").classList.toggle("on", dir === "down");
+  document.getElementById("train-up").classList.toggle("on", dir === "up");
+  document.getElementById("trainReasonLabel").textContent = dir === "up" ? "What's the draw?" : "Reason it's a poor fit";
+  const reasons = dir === "up" ? LIKE_REASONS : SKIP_REASONS;
+  const pre = dir === "up" ? "ideal_stage" : suggestSkipReason();
+  document.getElementById("trainReasonCat").innerHTML =
+    reasons.map(([v, l]) => `<option value="${v}" ${v === pre ? "selected" : ""}>${l}</option>`).join("");
+  document.getElementById("trainOtherWrap").classList.toggle("hide", pre !== "other");
+}
+function confirmTrain() {
+  const cat = document.getElementById("trainReasonCat").value;
+  const labels = _trainDir === "up" ? LIKE_LABELS : SKIP_LABELS;
   const reason = cat === "other"
-    ? (document.getElementById("skipReasonOther").value || "").trim()
-    : (SKIP_LABELS[cat] || "");
+    ? (document.getElementById("trainReasonOther").value || "").trim()
+    : (labels[cat] || "");
   closeModal();
-  setStatus("skipped", reason);
+  setStatus("skipped", reason, _trainDir);   // "up" -> likes.md (promote), else skips.md
 }
 
 // ---- compare modal (edit a changed span) ---------------------------------

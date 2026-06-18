@@ -154,8 +154,9 @@ On the **Jobs** tab:
     **copy icon** per answer for pasting into the form.
   - **↻ Regenerate** to draft (auto-picks the best CV variant), **✎ Edit** / **✓ Accept all edits**,
     then **⬇ Download** (Docx for ATS uploads, PDF, or MD).
-- **Skip** (just skip) or **Skip ▾ → Skip & down-rank** (records why, so similar roles score lower).
-  **Approve & mark applied** when you've sent it.
+- **Skip** (plain — no ranking impact) or **Skip ▾ → Skip + Train…**, which teaches the scorer:
+  *fewer like this* (down-rank similar) or *more like this* (promote similar). **Approve & mark
+  applied** when you've sent it.
 
 Every edit you accept teaches Caddie AI your style; the next drafts need fewer corrections.
 
@@ -173,7 +174,8 @@ Everything it learns lives in plain files under `data/` — yours to read, edit,
 | `style.md` | raw, append-only log of every edit you accepted (*AI suggested → changed to → your reason*) | the source of truth |
 | `style-rules.md` | a compact, de-duplicated do/don't rule set distilled from `style.md` | followed strictly on every draft |
 | `style-examples.md` | accepted edits grouped per application (balanced sampling) | voice examples for drafting |
-| `skips.md` | why you passed on roles (negative anchors) | down-ranks similar roles when scoring |
+| `skips.md` | why you passed on roles, *fewer like this* (negative anchors) | down-ranks similar roles when scoring |
+| `likes.md` | roles you skipped but want *more like this* (positive anchors) | up-ranks similar roles when scoring |
 | `strengths.md` | things you're strong at (positive anchors) | treated as **met**; lifts the score |
 
 - **Review & prune in the UI:** **Settings → Learned preferences** lists every captured edit as a
@@ -183,8 +185,9 @@ Everything it learns lives in plain files under `data/` — yours to read, edit,
 - **Re-distil:** the rule set is rebuilt from `style.md` **automatically right before each draft,
   but only when you've changed something** (no stale schedule) — so drafts always reflect your
   latest edits. You can also trigger a rebuild manually.
-- `skips.md` and `strengths.md` are captured as you use the app (**Skip ▾ → Skip & down-rank**
-  adds a skip; strengths you maintain) and are editable directly as markdown.
+- `skips.md`, `likes.md` and `strengths.md` are captured as you use the app (**Skip ▾ → Skip + Train**
+  writes a skip or a like depending on the direction; strengths you maintain) and are all
+  editable directly as markdown.
 
 ### The guardrails (fixed, in code)
 These don't change with learning — they're enforced in `engine/draft.py` (the drafting system
