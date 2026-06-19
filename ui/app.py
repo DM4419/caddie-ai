@@ -506,6 +506,23 @@ def research_context(job_id: str) -> dict:
         store.load_profile(), store.read_base_cv(), unmet)
 
 
+@app.post("/api/jobs/{job_id}/people")
+def people(job_id: str) -> dict:
+    """Shortlist people to contact on LinkedIn for this role's company —
+    target personas + ready-made Google/LinkedIn searches + a connection note."""
+    job = store.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    from engine import people as people_mod
+    prof = store.load_profile()
+    return {
+        "company": job.company,
+        "targets": people_mod.targets(job.company, job.role),
+        "note": people_mod.connection_note(job.company, job.role, prof.get("candidate_summary", "")),
+        "search_api": people_mod.has_search_api(),
+    }
+
+
 class CLInferIn(BaseModel):
     new_text: str = ""
 

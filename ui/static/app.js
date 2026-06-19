@@ -488,6 +488,7 @@ async function openReview(id) {
   document.getElementById("rwMeta").innerHTML = chips.join("") + `<span id="liveBadge"></span>`;
   document.getElementById("rwActions").innerHTML = `
     <button class="btn ghost" id="bmBtn" onclick="toggleBookmarkReview()">${job.bookmarked ? "★ Bookmarked" : "☆ Bookmark"}</button>
+    <button class="btn ghost" onclick="findPeople()" title="Shortlist people to contact on LinkedIn at this company">🔗 People</button>
     <span class="splitbtn" id="skipSplit">
       <button class="btn danger main" onclick="skipPlain()">Skip</button>
       <button class="btn danger caret" onclick="toggleSkipMenu(event)" title="More skip options">▾</button>
@@ -1270,6 +1271,46 @@ function confirmTrain() {
     : (labels[cat] || "");
   closeModal();
   setStatus("skipped", reason, _trainDir);   // "up" -> likes.md (promote), else skips.md
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text || "").then(() => {
+    if (btn) { const o = btn.textContent; btn.textContent = "✓ Copied"; setTimeout(() => (btn.textContent = o), 1200); }
+  }).catch(() => {});
+}
+
+// ---- shortlist people to contact on LinkedIn (per company) ---------------
+async function findPeople() {
+  if (!currentJob) return;
+  document.getElementById("modal").innerHTML = `
+   <div class="overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal wide">
+      <div class="mh"><h3>People to contact — ${esc(currentJob.company || "")}</h3><button class="x" onclick="closeModal()">×</button></div>
+      <div class="mb" id="peopleBody"><span class="spin"></span> finding targets…</div>
+    </div></div>`;
+  let d;
+  try { d = await api(`/api/jobs/${currentJob.id}/people`, { method: "POST" }); }
+  catch (e) { const b = document.getElementById("peopleBody"); if (b) b.innerHTML = `<div class="hint" style="color:var(--red)">${esc(e.message)}</div>`; return; }
+  const tgt = (d.targets || []).map(t => {
+    const ppl = (t.people || []).length
+      ? `<div style="margin:6px 0 0">${t.people.map(p => `<div style="font-size:12.5px;margin:2px 0"><a class="jd" href="${esc(p.url)}" target="_blank">${esc(p.name)}</a>${p.title ? ` — <span class="muted">${esc(p.title)}</span>` : ""}</div>`).join("")}</div>`
+      : "";
+    return `<div style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <strong style="font-size:12.5px">${esc(t.label)}</strong><span style="flex:1"></span>
+        <a class="btn sm ghost" href="${esc(t.google)}" target="_blank">Google ↗</a>
+        <a class="btn sm ghost" href="${esc(t.linkedin)}" target="_blank">LinkedIn ↗</a>
+        <a class="btn sm ghost" href="${esc(t.ddg)}" target="_blank">DDG ↗</a>
+      </div>${ppl}</div>`;
+  }).join("");
+  const note = d.note
+    ? `<div class="anh" style="margin:12px 0 4px">Connection note <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">— review &amp; personalise before sending</span></div>
+       <div class="opt" style="cursor:default"><div class="txt" id="connNote">${esc(d.note)}</div></div>
+       <button class="btn sm" onclick="copyText(document.getElementById('connNote').innerText, this)">⧉ Copy note</button>`
+    : "";
+  const hint = d.search_api ? ""
+    : `<div class="hint" style="margin-bottom:10px">Open a search to see real names, roles &amp; recent posts in your logged-in browser. <span class="muted">(Set <code>BRAVE_API_KEY</code> in <code>.env</code> to list names here automatically.)</span></div>`;
+  document.getElementById("peopleBody").innerHTML = hint + tgt + note;
 }
 
 // ---- compare modal (edit a changed span) ---------------------------------

@@ -154,6 +154,9 @@ On the **Jobs** tab:
     **copy icon** per answer for pasting into the form.
   - **↻ Regenerate** to draft (auto-picks the best CV variant), **✎ Edit** / **✓ Accept all edits**,
     then **⬇ Download** (Docx for ATS uploads, PDF, or MD).
+  - **🔗 People** — shortlist who to contact at the company: target personas (hiring lead,
+    recruiter, founder, peer) with ready-made Google/LinkedIn searches you open in your browser,
+    plus a connection-note draft. (Set `BRAVE_API_KEY` in `.env` to list names/roles inline.)
 - **Skip** (plain — no ranking impact) or **Skip ▾ → Skip + Train…**, which teaches the scorer:
   *fewer like this* (down-rank similar) or *more like this* (promote similar). **Approve & mark
   applied** when you've sent it.
