@@ -99,12 +99,6 @@ drivers it quoted, unmet requirements, work-mode, and Founder-fit / Voice-AI len
 
 ![caddie-ai — the scored job board](assets/board.png)
 
-**Review: assessed JD + pre-drafted CV** — the JD's requirements classified match / stretch / gap
-against your CV, a fit breakdown, then your CV tailored to the role with every change highlighted
-(hover any mark to see the original + rationale) and ready to edit.
-
-![caddie-ai — the review screen with an assessed JD and a pre-drafted CV](assets/review.png)
-
 > Screenshots use **sample data** — a demo profile (“Alex Rivera”) scored against live public job
 > listings. No real candidate data.
 
