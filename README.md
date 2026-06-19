@@ -120,8 +120,15 @@ drivers it quoted, unmet requirements, work-mode, and Founder-fit / Voice-AI len
 
 ![caddie-ai — the scored job board](assets/board.png)
 
-> Screenshots use **sample data** — a demo profile (“Alex Rivera”) scored against live public job
-> listings. No real candidate data.
+**A pre-generated application pack** — open a role and the whole pack is there in tabs: Research
+framing, JD fit, the tailored CV and cover letter, and the **Screening** answers (shown here)
+written to the role's *real* application questions. Where a fact is missing it leaves a visible
+orange placeholder rather than inventing one.
+
+![caddie-ai — a pre-generated application pack with the Screening tab open](assets/review-screening.png)
+
+> Screenshots use **sample data** — a demo profile (“Alex Rivera”) and example roles. No real
+> candidate data.
 
 ---
 
@@ -131,6 +138,27 @@ This is the heart of caddie-ai. The tool's first drafts are decent; its tenth dr
 *yours*, because every correction you make is captured as a reusable preference and fed back
 into future drafting and scoring. **Nothing here ever auto-edits your base CV** — the loop
 only ever influences *future drafts* through files you control.
+
+### What it looks like
+
+Every feedback channel is a small, deliberate piece of UI — you're always the one teaching it.
+
+**Edit with a reason.** Click any line in a draft (or any highlighted change) to compare the base
+and AI versions, write your own wording, or have the AI rewrite it to a prompt — and say *why*.
+That rationale is what gets learned, not just the new text.
+
+![caddie-ai — reviewing a change with its rationale](assets/learn-rationale.png)
+
+**Skip + Train.** Passing on a role can teach the scorer: **fewer like this** (a negative anchor)
+or **more like this** (a positive one), with a reason. A plain skip changes no rankings.
+
+![caddie-ai — Skip + Train, teaching the scorer fewer/more like this](assets/learn-skip.png)
+
+**A recap on submit.** The moment you mark a role applied, caddie-ai shows exactly what that
+application taught it — the edits and their reasons — and whether it changed your global rules,
+with links to every guiding file so nothing is a black box.
+
+![caddie-ai — the post-submit learning recap](assets/learn-recap.png)
 
 **1 · Capture — three feedback channels, all human-initiated**
 
