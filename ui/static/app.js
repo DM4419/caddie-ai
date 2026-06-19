@@ -467,10 +467,21 @@ async function saveJobUrl() {
 
 // ---- review --------------------------------------------------------------
 async function openReview(id) {
-  const { job, cv_options } = await api(`/api/jobs/${id}`);
+  const { job, cv_options, analysis_stale } = await api(`/api/jobs/${id}`);
   currentJob = job;
+  // old-format analysis (skills from the fixed candidate list, not the JD) -> drop it so it recomputes
+  if (analysis_stale && job.analysis) job.analysis = null;
   currentJob._cvOptions = cv_options || [];
   currentJob._cvUsed = (job.draft && job.draft.cv_used) || null;
+  // restore the research/framing used to build the pack (persisted on the draft)
+  // so the Research tab is populated after a reload instead of empty
+  const dctx = (job.draft && job.draft.ctx) || null;
+  if (dctx) {
+    currentJob._draftCtx = { angle: dctx.angle || "", why_excited: dctx.why_excited || "",
+      gap: dctx.gap || "", cultural_fit: dctx.cultural_fit || "", emphasis: dctx.emphasis || "" };
+    currentJob._opener = dctx.opener || "auto";
+    currentJob._research = { angle: dctx.angle || "", hooks: dctx.hooks || [] };
+  }
   const title = `${job.role} — ${job.company}`;
   document.getElementById("rwTitle").textContent = title;
   document.getElementById("rwH").textContent = title;
@@ -507,9 +518,12 @@ async function openReview(id) {
   document.getElementById("whyline").innerHTML =
     `<strong>Why ${job.score}:</strong> ${esc(job.reason)}.`;
   renderDraftArea(job);
+  // older packs were built before research was persisted -> Research tab is empty.
+  // Back-fill it once (the endpoint also saves it onto the draft so it sticks).
+  if (job.draft && !(job._draftCtx && (job._draftCtx.angle || "").trim()))
+    researchPrefill().catch(() => {});
   loadAnalysis(job);
   loadLiveness(job);
-  renderJd(job.jd && job.jd.requirements ? job.jd : "button");
   go("review");
 }
 
@@ -570,16 +584,10 @@ function highlightJd(text, reqs) {
   });
   return out.replace(/\n/g, "<br>");
 }
-function renderJd(jd) {
-  const el = document.getElementById("jdSection");
-  if (jd === "button") {
-    el.innerHTML = `<div class="panel p" style="margin-bottom:14px"><button class="btn ghost" onclick="loadJd()">⬇ Assess JD requirements (match / partial / gap)</button></div>`;
-    return;
-  }
-  if (jd === null) {
-    el.innerHTML = '<div class="panel p" style="margin-bottom:14px"><span class="spin"></span>Reading the JD &amp; matching requirements…</div>';
-    return;
-  }
+// Inner HTML for the in-pack "📋 JD fit" tab. `jd` is the JDDoc, or null/undefined
+// while it's being assessed.
+function jdPanelHtml(jd) {
+  if (!jd) return '<div class="panel p"><span class="spin"></span>Reading the JD &amp; matching requirements…</div>';
   const by = { match: [], stretch: [], mismatch: [] };
   (jd.requirements || []).forEach(r => (by[r.level] || by.stretch).push(r));
   const warn = jd.error ? `<div class="hint" style="color:var(--amber);margin-bottom:6px">⚠️ ${esc(jd.error)}</div>` : "";
@@ -589,29 +597,45 @@ function renderJd(jd) {
   const body = (jd.requirements || []).length
     ? group("✅ You match", by.match) + group("🟡 Partial / a stretch", by.stretch) + group("🔴 Gap / not met", by.mismatch)
     : '<div class="muted" style="margin-top:6px">No specific requirements could be extracted from the available JD text.</div>';
-  el.innerHTML = `<div class="panel p" style="margin-bottom:14px">
+  return `<div class="panel p">
     <div class="anh" style="display:flex;align-items:center;gap:8px">JD requirements vs your fit <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">— pulled from the job description</span>
       <span style="flex:1"></span>
-      <button class="btn ghost sm" onclick="loadJd()" title="Re-score the JD requirements against your CV + strengths (e.g. after adding a strength)">↻ Re-score</button></div>
+      <button class="btn ghost sm" onclick="loadJd()" title="Re-fetch the JD and re-score its requirements against your CV + strengths">↻ Re-score</button></div>
     ${warn}${body}
   </div>`;
 }
-// Re-render the JD panel in its current state (so the unmet block appears once
-// the async analysis lands). No-op while the JD itself is mid-fetch.
+// Render the current JD state into the in-pack tab, if it's mounted.
+function renderJdInto(jd) {
+  const el = document.getElementById("d-jd");
+  if (el) el.innerHTML = jdPanelHtml(jd);
+}
+// Re-render the JD tab once the async analysis lands. No-op while mid-fetch or
+// before the pack (and its d-jd tab) exists.
 function refreshJdPanel() {
   if (jdBusy) return;
-  renderJd(currentJob && currentJob.jd && currentJob.jd.requirements ? currentJob.jd : "button");
+  if (document.getElementById("d-jd")) renderJdInto(currentJob && currentJob.jd ? currentJob.jd : null);
 }
 let jdBusy = false;
-async function loadJd() {
+// Assess the JD requirements. `silent` populates currentJob.jd without touching
+// the DOM (used during buildPack, before the d-jd tab is mounted).
+async function loadJd(silent) {
   jdBusy = true;
-  renderJd(null);
+  if (!silent) renderJdInto(null);
   try {
-    const { jd } = await api(`/api/jobs/${currentJob.id}/jd`, { method: "POST" });
-    if (currentJob) { currentJob.jd = jd; jdBusy = false; renderJd(jd); }
+    const res = await api(`/api/jobs/${currentJob.id}/jd`, { method: "POST" });
+    if (res.geo_excluded) {                       // full JD revealed a US/Americas-only role
+      jdBusy = false;
+      alert(res.note || "This role is outside your geo gate — moved to Archived.");
+      go("jobs"); loadJobs();
+      return;
+    }
+    if (currentJob) { currentJob.jd = res.jd; jdBusy = false; if (!silent) renderJdInto(res.jd); }
   } catch (e) {
-    document.getElementById("jdSection").innerHTML =
-      `<div class="hint" style="color:var(--red);margin-bottom:14px">JD fetch failed: ${esc(e.message)} <button class="btn sm" onclick="loadJd()">Retry</button></div>`;
+    if (!silent) {
+      const el = document.getElementById("d-jd");
+      if (el) el.innerHTML = `<div class="panel p" style="color:var(--red)">JD fetch failed: ${esc(e.message)} <button class="btn sm" onclick="loadJd()">Retry</button></div>`;
+    }
+    if (silent) throw e;
   } finally {
     jdBusy = false;
   }
@@ -651,15 +675,21 @@ function renderAnalysis(a) {
     <div style="margin-top:6px">${bd || '<span class="muted">—</span>'}</div>
     <div class="anh" style="margin-top:14px">Where it fits</div><p class="anp">${esc(a.best_fit)}</p>
     <div class="anh" style="margin-top:12px">Shortcomings</div><p class="anp">${esc(a.shortcomings)}</p>
-    <div class="anh" style="margin-top:14px">Skills considered <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">— ✓ = this role values it (${matched.size}/${(a.skills_all || []).length})</span></div>
+    <div class="anh" style="margin-top:14px">Skills this role asks for <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">— scraped from the JD; ✓ = you have it (${matched.size}/${(a.skills_all || []).length})</span></div>
     <div class="pill-row" style="margin-top:6px">${chips}</div>
   </div>`;
 }
+const _reanalyzed = new Set();   // jobs whose stale analysis we've already refreshed this session
 async function loadAnalysis(job) {
-  if (job.analysis && (job.analysis.best_fit || job.analysis.error)) {
-    renderAnalysis(job.analysis);
+  const a = job.analysis;
+  // A cached analysis with skills but 0 matched is almost always stale (it predates
+  // the skill-matching fix) — recompute it once instead of showing "0/N considered".
+  const stale = a && !a.error && (a.skills_all || []).length && !(a.skills_matched || []).length && !_reanalyzed.has(job.id);
+  if (a && (a.best_fit || a.error) && !stale) {
+    renderAnalysis(a);
     return;
   }
+  if (stale) _reanalyzed.add(job.id);
   renderAnalysis(null);
   try {
     const { analysis } = await api(`/api/jobs/${job.id}/analysis`, { method: "POST" });
@@ -719,37 +749,52 @@ async function resolveApply(btn) {
 
 // Optional cover-letter inputs. The letter never invents a trigger, contact, or
 // product fact — anything you leave blank shows as a [ placeholder ] to fill in.
-function ctxFormHtml(job) {
+function researchHooksHtml(hooks) {
+  return (hooks && hooks.length)
+    ? `<div class="anh">Entry points <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">— angles to open with</span></div>
+       <ul style="margin:4px 0 10px;padding-left:18px">${hooks.map(h => `<li style="font-size:12.5px;line-height:1.5">${esc(h)}</li>`).join("")}</ul>` : "";
+}
+
+// The Research tab / build step: fetched framing (angle + entry points) + the
+// editable inputs that drive the pack (angle, opener, why, gap, fit, emphasis).
+function researchPanelHtml(job) {
   const c = job._draftCtx || {};
   const op = job._opener || "auto";
   const o = v => op === v ? "selected" : "";
-  return `<details class="clctx" ${(c.why_excited||c.gap||c.cultural_fit||c.emphasis) ? "open" : ""} style="margin:10px 0;text-align:left">
-    <summary class="hint">About this application <span class="muted">— optional; fills the letter's slots so it doesn't leave blanks</span></summary>
-    <div style="display:grid;gap:6px;margin-top:8px">
-      <div style="display:flex;align-items:center;gap:8px"><button class="btn ghost sm" type="button" onclick="researchPrefill(this)" title="Draft these notes from the JD + what's known about the company, for you to review and edit">✨ Research &amp; pre-fill</button><span id="rcMsg" class="hint"></span></div>
-      <label class="hint">Opener
-        <select id="dcOpener" style="border:1px solid var(--line);border-radius:6px;padding:3px 6px;margin-left:4px">
-          <option value="auto" ${o("auto")}>Auto (by job flags)</option>
-          <option value="standard" ${o("standard")}>Standard</option>
-          <option value="cheeky" ${o("cheeky")}>Cheeky — "my app ranked you near the top"</option>
-        </select></label>
-      <textarea class="ta" id="dcWhy" placeholder="Why you're excited / recent trigger (e.g. their Series B; a mutual contact; the product)" style="height:48px">${esc(c.why_excited||"")}</textarea>
-      <textarea class="ta" id="dcGap" placeholder="The honest gap to name (the JD requirement you lack)" style="height:40px">${esc(c.gap||"")}</textarea>
-      <textarea class="ta" id="dcFit" placeholder="One true cultural / working-style fit point" style="height:40px">${esc(c.cultural_fit||"")}</textarea>
-      <label class="hint" style="margin-top:2px">Cover-letter emphasis <span class="muted">— JD themes to accentuate &amp; link harder to your experience; rebuild the letter with this in mind</span></label>
-      <textarea class="ta" id="dcEmph" placeholder="e.g. lean into their enterprise voice-AI roadmap and the 0→1 founding mandate; tie my 0→1 launch and scale story to it" style="height:52px">${esc(c.emphasis||"")}</textarea>
-    </div>
-  </details>`;
+  const hooks = (job._research && job._research.hooks) || [];
+  const lab = (t, h) => `<label class="fieldlab" style="margin-top:10px;display:block">${t}${h ? ` <span class="muted" style="font-weight:400">— ${h}</span>` : ""}</label>`;
+  return `<div style="text-align:left">
+    ${job.draft ? `<div class="hint" style="margin-bottom:8px">This <strong>frames the whole pack</strong>: the <strong>angle</strong> leads the CV, cover letter &amp; screening answers; <strong>emphasis</strong> steers the CV; <strong>why / gap / fit</strong> fill the cover letter's slots.</div>` : ""}
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><button class="btn ghost sm" type="button" onclick="researchPrefill({force:true})" title="Re-run the research and re-fill the framing below">↻ Regenerate</button><span id="rcMsg" class="hint"></span></div>
+    <div id="researchOut">${researchHooksHtml(hooks)}</div>
+    ${lab("Angle", "the through-line that leads the whole pack")}
+    <textarea class="ta" id="dcAngle" placeholder="The core relevance angle to lead with (e.g. 0→1 builder who has shipped exactly the product this role owns)" style="height:80px">${esc(c.angle||"")}</textarea>
+    ${lab("Why you're excited / recent trigger", "fills the letter's opening")}
+    <textarea class="ta" id="dcWhy" placeholder="e.g. their Series B; a mutual contact; the product space you've worked in" style="height:80px">${esc(c.why_excited||"")}</textarea>
+    ${lab("The honest gap to name", "the JD requirement you lack — addressed candidly")}
+    <textarea class="ta" id="dcGap" placeholder="e.g. no fintech domain experience; haven't managed 50+ engineers" style="height:70px">${esc(c.gap||"")}</textarea>
+    ${lab("Cultural / working-style fit", "one true alignment with how they work")}
+    <textarea class="ta" id="dcFit" placeholder="e.g. ship-fast, low-process, founder-led; remote-first async" style="height:70px">${esc(c.cultural_fit||"")}</textarea>
+    ${lab("Emphasis", "JD themes to accentuate &amp; tie hardest to your experience (steers the CV)")}
+    <textarea class="ta" id="dcEmph" placeholder="e.g. lean into their enterprise voice-AI roadmap and the 0→1 founding mandate" style="height:80px">${esc(c.emphasis||"")}</textarea>
+    ${lab("Cover-letter opener", "")}
+    <select id="dcOpener" style="border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px">
+      <option value="auto" ${o("auto")}>Auto (by job flags)</option>
+      <option value="standard" ${o("standard")}>Standard</option>
+      <option value="cheeky" ${o("cheeky")}>Cheeky — "my app ranked you near the top"</option>
+    </select>
+  </div>`;
 }
 
 function renderDraftArea(job) {
   const area = document.getElementById("draftArea");
   if (!job.draft) {
+    // Pre-build: just the CTA + what it does. The research framing is NOT shown
+    // here — it's filled during the build and lives in the pack's Research tab.
     area.innerHTML =
       `<div class="panel p" style="text-align:center">
-        <p class="muted">No drafts yet for this job.</p>
-        ${ctxFormHtml(job)}
-        <button class="btn" id="genBtn" onclick="generateDraft()">Generate tailored CV, cover letter &amp; screening</button>
+        <div class="hint" style="text-align:left;margin-bottom:16px">Builds the full application pack in one go: assess the JD, fetch the screening questions, research the company, then draft a tailored CV, cover letter and screening answers. You review and edit everything afterwards — including the research framing, in the Research tab.</div>
+        <button class="btn" id="genBtn" onclick="buildPack()">🧩 Build Application Pack</button>
       </div>`;
     return;
   }
@@ -760,19 +805,21 @@ function renderDraftArea(job) {
   const opts = job._cvOptions || [];
   const switcher = opts.length
     ? `<label class="hint">tailored from
-        <select onchange="generateDraft(this.value)" style="border:1px solid var(--line);border-radius:6px;padding:3px 6px;margin-left:4px">
+        <select onchange="buildPack(this.value)" style="border:1px solid var(--line);border-radius:6px;padding:3px 6px;margin-left:4px">
           ${opts.map(o => `<option value="${o.id}" ${o.id === used.id ? "selected" : ""}>${esc(o.name)}</option>`).join("")}
         </select></label>`
     : `<span class="hint">tailored from <strong>${esc(used.name)}</strong></span>`;
   area.innerHTML = `
     ${errBar}
     <div class="doctabs">
+      <button class="dtab" onclick="dtab(event,'d-research')">🔎 Research</button>
+      <button class="dtab" onclick="dtab(event,'d-jd')">📋 JD fit</button>
       <button class="dtab on" onclick="dtab(event,'d-cv')">CV</button>
       <button class="dtab" onclick="dtab(event,'d-cl')">Cover letter</button>
       <button class="dtab" onclick="dtab(event,'d-sq')">Screening</button>
       <span style="flex:1"></span>
       ${switcher}
-      <button class="btn ghost sm" onclick="generateDraft(${used.id ? `'${used.id}'` : "''"})" title="Re-draft all three documents from scratch">↻ Regenerate</button>
+      <button class="btn ghost sm" onclick="buildPack(${used.id ? `'${used.id}'` : "''"})" title="Re-run the full prep (JD fit → questions → research → CV → cover letter → answers)">↻ Rebuild pack</button>
     </div>
     <div class="docactions">
       <button class="btn ghost sm" id="editToggle" onclick="toggleEdit()">✎ Edit</button>
@@ -780,21 +827,18 @@ function renderDraftArea(job) {
       <button class="btn ghost sm" data-doc="d-cl" onclick="openPasteCL()" title="Paste your revised cover letter; the app infers why each change was made and learns from it">↑ Paste revised CL</button>
       <button class="btn ghost sm" data-doc="d-sq" onclick="openScreeningQs()" title="Paste the application's screening questions (any ATS) to generate answers">↑ Screening Qs</button>
       <button class="btn ghost sm" data-doc="d-sq" onclick="refreshScreeningQs()" title="Re-fetch the live questions from the job URL and re-answer them (keeps your CV/CL)">↻ Refresh Qs</button>
+      <span style="flex:1"></span>
+      <span class="splitbtn" id="dlSplit">
+        <button class="btn sm main" onclick="exportPdf()" title="Download this tab's document as PDF">⬇ PDF</button>
+        <button class="btn sm caret" onclick="toggleDlMenu(event)" title="Other formats">▾</button>
+        <div class="menu" style="left:auto;right:0">
+          <div class="sub">Downloads the document on the current tab.</div>
+          <button onclick="exportDocx()">Word .docx <span class="muted" style="font-weight:400">— for ATS uploads</span></button>
+          <button onclick="exportPdf()">PDF</button>
+          <button onclick="exportMd()">Markdown .md <span class="muted" style="font-weight:400">— paste into text boxes</span></button>
+        </div>
+      </span>
     </div>
-    <details class="dlbar">
-      <summary>⬇ Download documents <span class="muted" style="font-weight:400">— attach the <strong>Docx</strong> to ATS uploads; MD is for editing / pasting into text boxes</span></summary>
-      <div class="dlgrid">
-        <span class="dlhdr"></span><span class="dlhdr">ATS upload</span><span class="dlhdr">print</span><span class="dlhdr">text</span>
-        <span class="dlname">CV</span><button class="btn sm" onclick="exportDocx('d-cv')">Docx</button><button class="btn sm" onclick="exportPdf('d-cv')">PDF</button><button class="btn sm" onclick="exportMd('d-cv')">MD</button>
-        <span class="dlname">Cover letter</span><button class="btn sm" onclick="exportDocx('d-cl')">Docx</button><button class="btn sm" onclick="exportPdf('d-cl')">PDF</button><button class="btn sm" onclick="exportMd('d-cl')">MD</button>
-        <span class="dlname">Screening answers</span><button class="btn sm" onclick="exportDocx('d-sq')">Docx</button><button class="btn sm" onclick="exportPdf('d-sq')">PDF</button><button class="btn sm" onclick="exportMd('d-sq')">MD</button>
-        <span class="dlname" style="border-top:1px solid var(--line);padding-top:8px">Learnings summary</span>
-        <button class="btn sm" style="border-top:1px solid var(--line);padding-top:8px" onclick="exportLearnings('docx')">Docx</button>
-        <button class="btn sm" style="border-top:1px solid var(--line);padding-top:8px" onclick="exportLearnings('pdf')">PDF</button>
-        <button class="btn sm" style="border-top:1px solid var(--line);padding-top:8px" onclick="exportLearnings('md')">MD</button>
-      </div>
-    </details>
-    ${ctxFormHtml(job)}
     <div id="editTools" class="hide" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:8px 10px;background:#eef6ff;border:1px solid #cfe3ff;border-radius:8px;font-size:12.5px">
       <strong>Editing</strong> — click any text, including section titles.
       <button class="btn sm" onclick="insertSection()">＋ Section</button>
@@ -806,27 +850,50 @@ function renderDraftArea(job) {
     </div>
     ${aggWarn(job)}
     <div class="hint" id="previewHint" style="margin-bottom:10px">Full preview. <mark class="chg" onclick="return false">Yellow</mark> = changed from base; <mark class="chg gap" onclick="return false">orange</mark> = needs your input. Click a highlight to compare versions, or <strong>click any line</strong> (bullet, heading, section title) to rewrite it with a reason — the app learns your style for future drafts. Or hit <strong>✎ Edit</strong> for free-form editing. Cover-letter opener: <strong>${esc(job._opener && job._opener !== "auto" ? job._opener : (job._openerUsed || "auto"))}</strong>. ${job._questionsFetched ? `Screening answers <strong>${job._questionsFetched}</strong> real question(s) fetched from the application.` : `Screening uses likely questions (none fetchable from this posting).`}</div>
+    <div id="d-research" class="hide">${researchPanelHtml(job)}
+      <div style="text-align:center;margin-top:14px"><button class="btn" onclick="buildPack(${used.id ? `'${used.id}'` : "''"})">↻ Rebuild pack with this framing</button></div></div>
+    <div id="d-jd" class="hide">${jdPanelHtml(job.jd && job.jd.requirements ? job.jd : null)}</div>
     <div id="d-cv" class="doc">${d.cv_html}</div>
     <div id="d-cl" class="doc hide">${d.cl_html}</div>
     <div id="d-sq" class="doc hide">${d.screening_html}</div>`;
   editMode = false;
   decorateScreening();
-  syncDocActions("d-cv");
+  dtab(null, "d-research");          // open on the Research tab by default
+  // older packs were built before JD assessment was folded in — assess lazily so
+  // the JD-fit tab fills in instead of spinning forever
+  if (!(job.jd && job.jd.requirements))
+    loadJd(true).then(() => renderJdInto(currentJob && currentJob.jd)).catch(() => {
+      const el = document.getElementById("d-jd");
+      if (el) el.innerHTML = '<div class="panel p">Couldn\'t assess the JD. <button class="btn sm" onclick="loadJd()">Retry</button></div>';
+    });
 }
 
 // Draft the "About this application" notes from the JD/company (user reviews & edits).
-async function researchPrefill(btn) {
+async function researchPrefill(opts) {
+  opts = opts || {};
+  const force = !!opts.force, silent = !!opts.silent;
   if (!currentJob) return;
   const msg = document.getElementById("rcMsg");
-  if (msg) msg.innerHTML = '<span class="spin"></span>researching the role…';
+  if (msg && !silent) msg.innerHTML = '<span class="spin"></span>researching the role…';
   try {
     const r = await api(`/api/jobs/${currentJob.id}/research-context`, { method: "POST" });
-    if (r.error) { if (msg) msg.textContent = "✗ " + r.error; return; }
+    if (r.error) { if (msg && !silent) msg.textContent = "✗ " + r.error; if (silent) throw new Error(r.error); return; }
+    // _draftCtx is the canonical framing store (it outlives the form during build);
+    // only fill blanks unless Regenerate (force) was requested
+    const cur = currentJob._draftCtx || {};
+    const fill = (k, v) => { if (v && (force || !(cur[k] && String(cur[k]).trim()))) cur[k] = v; };
+    fill("angle", r.angle); fill("why_excited", r.why_excited); fill("cultural_fit", r.cultural_fit);
+    fill("emphasis", r.emphasis); fill("gap", r.gap);
+    currentJob._draftCtx = cur;
+    currentJob._research = { angle: r.angle || "", hooks: r.hooks || [] };
+    // reflect into the form if it's on screen
     const set = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
-    set("dcWhy", r.why_excited); set("dcFit", r.cultural_fit);
-    set("dcEmph", r.emphasis); set("dcGap", r.gap);
-    if (msg) msg.textContent = "✓ pre-filled — review & edit, then ↻ Regenerate";
-  } catch (e) { if (msg) msg.textContent = "✗ " + e.message; }
+    set("dcAngle", cur.angle); set("dcWhy", cur.why_excited); set("dcFit", cur.cultural_fit);
+    set("dcEmph", cur.emphasis); set("dcGap", cur.gap);
+    const out = document.getElementById("researchOut");
+    if (out) out.innerHTML = researchHooksHtml(r.hooks || []);
+    if (msg && !silent) msg.textContent = "✓ researched — review & edit, then Build Application Pack";
+  } catch (e) { if (msg && !silent) msg.textContent = "✗ " + e.message; if (silent) throw e; }
 }
 
 // Per-question copy button on screening answers (UI only — stripped from exports & saves).
@@ -946,7 +1013,7 @@ function docMeta(id) {
 }
 // Which draft tab is showing, + a label/filename for it.
 function activeDocInfo() { return docMeta((activeDoc() || {}).id || "d-cv"); }
-// Export filename: <DocType>_<Name>_<Role>  e.g. CV_Alex_Rivera_Product_Manager
+// Export filename: <DocType>_<Name>_<Role>  e.g. CV_Dmitry_Meltsov_Product_Manager
 function _slug(s) { return (s || "").trim().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, ""); }
 function candidateName() {
   const h = document.querySelector("#d-cv h3");
@@ -1122,14 +1189,57 @@ async function exportLearnings(fmt) {
     printWindow("Learned drafting preferences", "cvdoc", "<h3>Learned drafting preferences</h3>" + html);
   } catch (e) { alert("Couldn't load learnings: " + e.message); }
 }
+// Build pipeline: research first (pre-populate the framing) if not done yet, then
+// draft the pack using research + JD + application questions.
+// Fetch + persist the live screening questions (so they can inform research + draft).
+async function fetchQuestions() {
+  if (!currentJob) return;
+  const r = await api(`/api/jobs/${currentJob.id}/questions`, { method: "POST" });
+  currentJob.questions = (r.questions || []).map(t => ({ text: t }));
+  currentJob._questionsFetched = r.count || 0;
+  return r;
+}
+
+// The canonical "prepare the whole pack" sequence — every Rebuild routes through
+// here so research is ALWAYS part of doc prep. Order:
+//   JD fit -> screening questions -> research -> CV -> CL -> screening answers.
+// Steps already done (present) are skipped; the draft step always re-runs.
+async function buildPack(cvId) {
+  if (!currentJob) return;
+  // 1. capture any framing the user typed in the (possibly hidden) Research panel
+  const val = id => { const el = document.getElementById(id); return el ? el.value : ""; };
+  if (document.getElementById("dcAngle")) {
+    currentJob._draftCtx = { angle: val("dcAngle"), why_excited: val("dcWhy"), gap: val("dcGap"),
+      cultural_fit: val("dcFit"), emphasis: val("dcEmph") };
+    const op = val("dcOpener"); if (op) currentJob._opener = op;
+  }
+  const area = document.getElementById("draftArea");
+  if (area) area.innerHTML = '<div class="panel p"><span class="spin"></span>Building your pack — assessing the JD, fetching the application questions, researching, then drafting the CV, cover letter &amp; answers… (~30s).</div>';
+  // 2. JD fit — real gaps + role-fit feed the research and the draft
+  if (!(currentJob.jd && currentJob.jd.requirements)) {
+    try { await loadJd(true); } catch (e) { /* continue even if JD assessment fails */ }
+  }
+  // 3. screening questions — fetched early so they shape research, CV and CL too
+  if (!(currentJob.questions && currentJob.questions.length)) {
+    try { await fetchQuestions(); } catch (e) { /* continue even if none fetchable */ }
+  }
+  // 4. research the framing (only fills blanks; respects anything the user typed)
+  const c = currentJob._draftCtx || {};
+  if (!(c.angle && c.angle.trim())) {
+    try { await researchPrefill({ silent: true }); } catch (e) { /* draft even if research fails */ }
+  }
+  // 5. draft CV -> CL -> screening answers from the framing + JD + questions
+  await generateDraft(cvId);
+}
+
 async function generateDraft(cvId) {
   const area = document.getElementById("draftArea");
   // capture any cover-letter inputs before we replace the DOM
   const val = id => { const el = document.getElementById(id); return el ? el.value : ""; };
   const opener = val("dcOpener") || currentJob._opener || "auto";
-  const ctx = { why_excited: val("dcWhy"), gap: val("dcGap"), cultural_fit: val("dcFit"), emphasis: val("dcEmph") };
-  if (document.getElementById("dcWhy")) { currentJob._draftCtx = ctx; currentJob._opener = opener; }
-  area.innerHTML = '<div class="panel p"><span class="spin"></span>Drafting with the model… this can take ~10–20s.</div>';
+  const ctx = { angle: val("dcAngle"), why_excited: val("dcWhy"), gap: val("dcGap"), cultural_fit: val("dcFit"), emphasis: val("dcEmph") };
+  if (document.getElementById("dcAngle") || document.getElementById("dcWhy")) { currentJob._draftCtx = ctx; currentJob._opener = opener; }
+  area.innerHTML = '<div class="panel p"><span class="spin"></span>Building your application pack… this can take ~10–20s.</div>';
   try {
     const r = await api(`/api/jobs/${currentJob.id}/draft`, {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -1137,6 +1247,7 @@ async function generateDraft(cvId) {
         cv_id: cvId || "",
         opener: (currentJob._opener && currentJob._opener !== "auto") ? currentJob._opener : "",
         ...(currentJob._draftCtx || {}),
+        hooks: (currentJob._research && currentJob._research.hooks) || [],
       }),
     });
     currentJob.draft = r.draft;
@@ -1151,12 +1262,17 @@ async function generateDraft(cvId) {
 }
 
 function dtab(e, id) {
-  ["d-cv", "d-cl", "d-sq"].forEach(x => document.getElementById(x).classList.toggle("hide", x !== id));
+  ["d-research", "d-jd", "d-cv", "d-cl", "d-sq"].forEach(x => { const el = document.getElementById(x); if (el) el.classList.toggle("hide", x !== id); });
   const tabs = [...document.querySelectorAll(".doctabs .dtab")];
   tabs.forEach(t => t.classList.remove("on"));
-  const idx = { "d-cv": 0, "d-cl": 1, "d-sq": 2 }[id];
+  const idx = { "d-research": 0, "d-jd": 1, "d-cv": 2, "d-cl": 3, "d-sq": 4 }[id];
   const active = (e && e.target && e.target.classList && e.target.classList.contains("dtab")) ? e.target : tabs[idx];
   if (active) active.classList.add("on");
+  // the per-document controls (edit/accept, preview legend) only apply to a real document
+  const isDoc = id !== "d-research" && id !== "d-jd";
+  const da = document.querySelector(".docactions"); if (da) da.classList.toggle("hide", !isDoc);
+  const ph = document.getElementById("previewHint"); if (ph) ph.classList.toggle("hide", !isDoc);
+  const dl = document.getElementById("dlSplit"); if (dl) dl.classList.toggle("hide", !isDoc);   // download is per-document
   syncDocActions(id);
 }
 // Show only the elements (per-tab action buttons + the aggregator note) relevant to
@@ -1183,9 +1299,62 @@ async function setStatus(status, reason, anchor) {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status, reason: reason || "", anchor: anchor || "" }),
   });
+  if (status === "applied") { showLearningRecap(currentJob.id); return; }   // modal navigates on close
   go("jobs");
   loadJobs();                        // refresh so the job moves to its tab + counts update
 }
+
+// After a submit: show what this application taught + how the global rules changed.
+async function showLearningRecap(jobId) {
+  const nav = "closeModal();go('jobs');loadJobs()";
+  document.getElementById("modal").innerHTML = `
+   <div class="overlay" onclick="if(event.target===this){${nav}}">
+    <div class="modal wide">
+      <div class="mh"><h3>✅ Applied — what this taught Caddie AI</h3><button class="x" onclick="${nav}">×</button></div>
+      <div class="mb" id="recapBody"><span class="spin"></span> capturing learnings…</div>
+      <div class="mf"><button class="btn ok" onclick="${nav}">Done</button></div>
+    </div></div>`;
+  let d;
+  try { d = await api(`/api/jobs/${jobId}/learning-recap`, { method: "POST" }); }
+  catch (e) { const b = document.getElementById("recapBody"); if (b) b.innerHTML = `<div class="hint">Marked applied. (Couldn't load the learning recap: ${esc(e.message)})</div>`; return; }
+  const sub = "font-weight:400;text-transform:none;letter-spacing:0";
+  // 1) What THIS submission taught (the edits captured on this specific application).
+  const edits = d.count
+    ? `<div class="anh">From this application <span class="muted" style="${sub}">— ${d.count} edit(s) captured</span></div>
+       ${d.entries.map(e => `<div class="opt" style="cursor:default;margin-bottom:8px">
+          ${e.changed ? `<div class="txt"><span class="del">${esc(e.suggested)}</span> <span class="ins">${esc(e.changed)}</span></div>` : ""}
+          <div class="rat" style="margin:8px 0 0">Why: ${esc(e.reason || "(no reason given)")}</div></div>`).join("")}`
+    : `<div class="hint" style="margin-bottom:6px">No edits were captured from this application — you accepted the draft as-is.</div>`;
+  // 2) How it impacted GLOBAL settings — the delta, not the whole rule set. If
+  //    nothing changed globally, say so explicitly.
+  const newRules = (d.new_rules || []).filter(Boolean);
+  // Only treat the diff as genuinely-new rules when it's a small, incremental
+  // change. A large diff means the whole rule set was re-distilled (reworded),
+  // which is noise — not N brand-new rules from one submission.
+  const genuinelyNew = newRules.length > 0 && newRules.length <= Math.max(2, d.count);
+  let global;
+  if (genuinelyNew) {
+    global = `<div class="anh" style="margin-top:14px">↳ New global drafting rule(s) <span class="muted" style="${sub}">— now applied to every future draft</span></div>
+       <ul style="margin:6px 0 0;padding-left:18px;font-size:12.5px;line-height:1.55">${newRules.map(r => `<li style="margin:3px 0">${esc(r)}</li>`).join("")}</ul>`;
+  } else if (d.count) {
+    global = `<div class="hint" style="margin-top:14px">✓ Folded into your global drafting rules &amp; style examples — applied to every future draft. No brand-new rule was needed; open <strong>Drafting rules</strong> below to see the current set.</div>`;
+  } else {
+    global = `<div class="hint" style="margin-top:14px">Nothing was inferred at the global level — your drafting rules and scoring anchors are unchanged.</div>`;
+  }
+  // 3) The guiding files that steer drafting + scoring, as links to open if needed.
+  const guiding = `<div class="anh" style="margin-top:16px">Guiding files <span class="muted" style="${sub}">— open any to review what steers your drafts &amp; scoring</span></div>
+     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+       ${GUIDING_LINKS.map(g => `<a class="btn sm ghost" href="/api/guiding/${g.k}" target="_blank" rel="noopener" title="${esc(g.t)}">${esc(g.label)} ↗</a>`).join("")}
+     </div>`;
+  document.getElementById("recapBody").innerHTML = edits + global + guiding;
+}
+const GUIDING_LINKS = [
+  { k: "rules", label: "Drafting rules", t: "Distilled guidelines + guardrails applied to every draft" },
+  { k: "edits", label: "Edit log", t: "Your raw accepted edits with reasons — the rules are distilled from these" },
+  { k: "strengths", label: "Strengths", t: "Treated as met in scoring/JD-fit; surfaced in drafts" },
+  { k: "likes", label: "Liked roles", t: "Up-rank anchors for similar roles" },
+  { k: "skips", label: "Skipped roles", t: "Down-rank anchors for similar roles" },
+];
 
 // Plain Skip = no ranking impact (default). Skip + Train teaches the scorer:
 // "fewer like this" -> skips.md (down-rank) or "more like this" -> likes.md (promote).
@@ -1194,6 +1363,9 @@ function skipTrain() { closeSkipMenu(); openTrainModal(); }
 function toggleSkipMenu(e) { e.stopPropagation(); const s = document.getElementById("skipSplit"); if (s) s.classList.toggle("open"); }
 function closeSkipMenu() { const s = document.getElementById("skipSplit"); if (s) s.classList.remove("open"); }
 document.addEventListener("click", closeSkipMenu);   // click anywhere closes the skip menu
+function toggleDlMenu(e) { e.stopPropagation(); const s = document.getElementById("dlSplit"); if (s) s.classList.toggle("open"); }
+function closeDlMenu() { const s = document.getElementById("dlSplit"); if (s) s.classList.remove("open"); }
+document.addEventListener("click", closeDlMenu);
 // Skipping asks why — the reason becomes a negative scoring anchor (skips.md) that
 // down-ranks similar roles in future fetches.
 const SKIP_REASONS = [
@@ -1293,7 +1465,10 @@ async function findPeople() {
   catch (e) { const b = document.getElementById("peopleBody"); if (b) b.innerHTML = `<div class="hint" style="color:var(--red)">${esc(e.message)}</div>`; return; }
   const tgt = (d.targets || []).map(t => {
     const ppl = (t.people || []).length
-      ? `<div style="margin:6px 0 0">${t.people.map(p => `<div style="font-size:12.5px;margin:2px 0"><a class="jd" href="${esc(p.url)}" target="_blank">${esc(p.name)}</a>${p.title ? ` — <span class="muted">${esc(p.title)}</span>` : ""}</div>`).join("")}</div>`
+      ? `<div style="margin:8px 0 0;border-top:1px dashed var(--line);padding-top:6px">${t.people.map(p => `<div style="display:flex;align-items:baseline;gap:6px;margin:3px 0;font-size:12.5px">
+          <a class="jd" href="${esc(p.url)}" target="_blank"><strong>${esc(p.name)}</strong></a>
+          ${p.title ? `<span class="muted" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">— ${esc(p.title)}</span>` : `<span style="flex:1"></span>`}
+          <a class="btn sm ghost" href="${esc(p.url)}" target="_blank" title="Open LinkedIn profile" style="white-space:nowrap">LinkedIn ↗</a></div>`).join("")}</div>`
       : "";
     return `<div style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1357,10 +1532,10 @@ function _diffSide(ops, side) {
   }).join("");
 }
 
-let curSuggested = "", curBase = "";
+let curSuggested = "", curBase = "", curRegenPrompt = "";
 function openModal(m) {
   curMark = m; curChoice = "custom"; curIsLine = false;
-  curSuggested = m.textContent;                       // the AI's tailored text
+  curSuggested = m.textContent; curRegenPrompt = "";  // the AI's tailored text
   curBase = m.dataset.base || "";
   const rat = m.dataset.rat || "";
   const ops = _wordDiff(curBase, curSuggested);
@@ -1392,7 +1567,7 @@ function openModal(m) {
 function openLineModal(el) {
   curMark = el; curIsLine = true; curChoice = "own";
   const cur = el.textContent.trim();
-  curBase = cur; curSuggested = cur;          // no separate AI/base for a plain line
+  curBase = cur; curSuggested = cur; curRegenPrompt = "";   // no separate AI/base for a plain line
   const kind = el.classList.contains("role-h") ? "section heading"
     : el.tagName === "LI" ? "bullet" : el.tagName === "H3" ? "heading" : "line";
   document.getElementById("modal").innerHTML = `
@@ -1453,8 +1628,9 @@ async function regenLine() {
       body: JSON.stringify({ text: curSuggested, instruction: instr, kind }),
     });
     document.getElementById("ownText").value = r.text;
+    curRegenPrompt = instr;            // the prompt becomes the inferred learning rationale on Save
     pick("own");
-    msg.innerHTML = '<span class="ok-tag">✓ rewritten</span> — review/edit above, add a reason, then Save.';
+    msg.innerHTML = '<span class="ok-tag">✓ rewritten</span> — review/edit above, then Save. Your prompt becomes the learned rule (or add your own reason to override).';
   } catch (e) { msg.textContent = "✗ " + e.message; }
 }
 async function saveChange() {
@@ -1469,7 +1645,7 @@ async function saveChange() {
     try {
       await api(`/api/jobs/${currentJob.id}/override`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base: curBase, suggested: curSuggested, actual: text, reason }),
+        body: JSON.stringify({ base: curBase, suggested: curSuggested, actual: text, reason, instruction: curRegenPrompt }),
       });
     } catch (e) { /* non-blocking: still apply the edit locally */ }
   }
@@ -1797,6 +1973,8 @@ async function loadStyle() {
        <strong style="font-size:12.5px">Inferred guidelines &amp; guardrails</strong>
        <span class="muted" style="font-size:11px">— condensed from your edits; applied to every draft</span>
        <span style="flex:1"></span>
+       <button class="btn sm ghost" onclick="exportLearnings('docx')" title="Download your learnings as Word">⬇ Docx</button>
+       <button class="btn sm ghost" onclick="exportLearnings('md')" title="Download your learnings as Markdown">⬇ MD</button>
        <button class="btn sm ghost" onclick="rebuildLearnings(this)" title="Re-distil the rules from your latest edits">↻ Rebuild</button></div>
      ${rulesHtml}${recentHtml}${allHtml}
      <div style="margin-top:6px"><button class="btn sm ghost" onclick="deleteStyle('all')">Clear all learned edits</button> <span id="styleMsg" class="hint"></span></div>`;

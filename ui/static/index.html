@@ -205,6 +205,7 @@
   .splitbtn .menu button{display:block;width:100%;text-align:left;background:none;border:0;padding:8px 10px;border-radius:8px;font-size:12.5px;cursor:pointer;color:var(--ink);font-weight:600}
   .splitbtn .menu button:hover{background:#f6f7f9}
   .splitbtn .menu .sub{font-size:11px;font-weight:400;color:var(--muted);padding:1px 10px 5px}
+  #dlSplit .caret{border-left-color:rgba(255,255,255,.4)}   /* blue download split, not the red skip one */
   /* board: consolidated status selector */
   .statussel{border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:12.5px;background:#fff;color:var(--ink);cursor:pointer}
   .statussel.on{background:var(--ink);color:#fff;border-color:var(--ink)}
@@ -233,7 +234,7 @@
       <button data-view="boards"><span class="dot"></span>Boards</button>
       <button data-view="settings"><span class="dot"></span>Settings</button>
     </nav>
-    <div class="foot">Loop: paste a JD → score → review &amp; edit → download → apply by hand.</div>
+    <div class="foot">Loop: Discover → Assess fit → Draft application → Learn from you.</div>
   </aside>
 
   <main>
@@ -245,7 +246,7 @@
       </div>
       <div id="scanResult" class="banner hide"></div>
       <div class="head">
-        <div><h2>Jobs</h2><div class="meta" id="jobsMeta">No jobs yet — paste a JD to begin.</div></div>
+        <div><h2>Jobs</h2><div class="meta" id="jobsMeta">No jobs yet — ↻ Refresh all sources to begin.</div></div>
         <div>
           <button class="btn ghost" onclick="downloadCsv()">⬇ CSV</button>
           <button class="btn ghost" onclick="togglePaste()">+ Paste a role</button>
@@ -327,7 +328,6 @@
       </div>
       <div class="whyline" id="whyline"></div>
       <div id="fitAnalysis"></div>
-      <div id="jdSection"></div>
       <div id="draftArea"></div>
     </section>
 

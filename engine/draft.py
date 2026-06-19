@@ -72,8 +72,17 @@ Marking changes (both documents):
   unfilled slot use class="chg gap" as shown above.
   Inside data-base and data-rat attribute values, NEVER use the double-quote
   character — use single quotes if you must quote something.
-- Unchanged text stays as plain HTML. Use <h3> for the name, <div class='role-h'>
-  for role/section headers, <strong>, <ul><li>, and <p>.
+- Unchanged text stays as plain HTML. Use these tags EXACTLY (matching the base
+  CV's markdown levels): <h3> ONLY for the candidate's name (once, at the very top);
+  <div class='role-h'> for BOTH section headers (## Summary, Skills, Professional
+  Experience, Education, Additional Information) AND company headers (### COMPANY —
+  Location). NEVER put a company header in <h3>. Each role then follows this shape:
+    <div class='role-h'>COMPANY — Location</div>
+    <p><strong>Job Title</strong> | Dates | Tenure</p>
+    <p><em>One-line context / domain tags</em></p>
+    <ul><li>bullet</li>…</ul>
+  Use <strong> for the job-title line (not <div class='role-h'>), <em> for the
+  italic context line, and <ul><li> for bullets.
 - Output the three documents separated by these EXACT delimiter lines, and output
   NOTHING else (no preamble, no code fences):
 @@@CV@@@
@@ -101,6 +110,8 @@ COVER LETTER OPENER STYLE: {opener}
 
 ABOUT THIS APPLICATION (use these to fill slots; where a field is blank or says
 '(not supplied)', leave a visible placeholder rather than inventing):
+- FRAMING ANGLE — the through-line for the whole pack; lead the CV summary, the cover
+  letter, and the screening answers with this where it fits naturally: {angle}
 - Why I'm excited / recent trigger: {why_excited}
 - The honest gap to name: {gap}
 - Cultural / working-style fit point: {cultural_fit}
@@ -261,11 +272,16 @@ def generate_screening(job_dict: dict, cv: str, questions: list) -> str:
 
 RESEARCH_SYSTEM = (
     "You help a candidate prepare a job application. From the JOB DESCRIPTION and what you "
-    "reliably know about the COMPANY, draft short, honest prep notes the candidate can edit. "
-    "Ground everything in the JD/company mission and the candidate's real CV — NEVER invent "
-    "specific facts (no made-up funding rounds, product launches, metrics, or mutual contacts). "
-    "If unsure of a concrete fact, stay general. British spelling, no em-dashes. Return ONLY JSON:\n"
-    '{"why_excited":"1-2 sentences: a genuine, specific reason this role/company fits the candidate, '
+    "reliably know about the COMPANY, draft short, honest prep notes that FRAME the application "
+    "— the angle to lead with and the entry points that make the candidate relevant. Ground "
+    "everything in the JD/company mission and the candidate's real CV — NEVER invent specific "
+    "facts (no made-up funding rounds, product launches, metrics, or mutual contacts). If unsure "
+    "of a concrete fact, stay general. British spelling, no em-dashes. Return ONLY JSON:\n"
+    '{"angle":"1-2 sentences: the candidate\'s core relevance angle for THIS company and role — '
+    'what to lead with — grounded in the JD/mission and the CV",\n'
+    ' "hooks":["2-3 concrete entry points / opening angles, each a short phrase, grounded in the '
+    'JD or company space (a shared focus, the problem domain, a relevant prior win) — NOT invented news"],\n'
+    ' "why_excited":"1-2 sentences: a genuine, specific reason this role/company fits the candidate, '
     'tied to the JD/mission (no invented news)",\n'
     ' "cultural_fit":"1 sentence: one true working-style alignment between the candidate and this team, '
     'drawn from the JD tone + the CV",\n'
@@ -273,12 +289,19 @@ RESEARCH_SYSTEM = (
     'as a short phrase list"}')
 
 
-def research_application_context(job: dict, profile: dict, cv_text: str, unmet: list) -> dict:
+def research_application_context(job: dict, profile: dict, cv_text: str, unmet: list,
+                                 app_questions: list | None = None) -> dict:
     """Suggested 'About this application' notes drafted from the JD + company, for the
-    user to review/edit. Grounded, never fabricated; the gap is taken from scoring."""
+    user to review/edit. Grounded, never fabricated; the gap is taken from scoring.
+    app_questions (optional): the real screening questions this employer asks — the
+    framing should anticipate them so the whole pack answers what they care about."""
     import json
-    out = {"why_excited": "", "cultural_fit": "", "emphasis": "",
-           "gap": (unmet[0] if unmet else ""), "error": ""}
+    # Defensive: never name something the candidate already meets as "the gap".
+    real_gaps = [g for g in (unmet or [])
+                 if g and not any(t in g.lower() for t in ("solid match", "strong match",
+                                                            "(candidate", "already", "meets", "exceeds"))]
+    out = {"angle": "", "hooks": [], "why_excited": "", "cultural_fit": "", "emphasis": "",
+           "gap": (real_gaps[0] if real_gaps else ""), "error": ""}
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         out["error"] = "No ANTHROPIC_API_KEY set."
@@ -287,16 +310,25 @@ def research_application_context(job: dict, profile: dict, cv_text: str, unmet: 
         import anthropic
         client = anthropic.Anthropic(api_key=api_key)
         summary = (profile.get("candidate_summary") or "").strip()
+        qblock = ""
+        if app_questions:
+            qlist = "\n".join(f"- {q}" for q in app_questions[:12] if str(q).strip())
+            if qlist:
+                qblock = ("\n\nAPPLICATION QUESTIONS THIS EMPLOYER ASKS (anticipate these — the angle "
+                          "and emphasis should set up strong answers to them):\n" + qlist)
         user = (f"COMPANY: {job.get('company','')}\nROLE: {job.get('role','')} "
                 f"({job.get('mode','')} {job.get('location','')})\n\n"
                 f"CANDIDATE SUMMARY:\n{summary}\n\nCANDIDATE CV:\n{(cv_text or '')[:2500]}\n\n"
-                f"JOB DESCRIPTION:\n{(job.get('description','') or '')[:5000]}\n\nDraft the notes now.")
+                f"JOB DESCRIPTION:\n{(job.get('description','') or '')[:5000]}{qblock}\n\nDraft the notes now.")
         msg = client.messages.create(model=DEFAULT_MODEL, max_tokens=700,
                                      system=RESEARCH_SYSTEM,
                                      messages=[{"role": "user", "content": user}])
         raw = "".join(b.text for b in msg.content if b.type == "text").strip()
         s, e = raw.find("{"), raw.rfind("}")
         data = json.loads(raw[s:e + 1] if s != -1 else raw)
+        out["angle"] = str(data.get("angle", ""))[:500]
+        hooks = data.get("hooks", [])
+        out["hooks"] = [str(h).strip()[:140] for h in hooks if str(h).strip()][:4] if isinstance(hooks, list) else []
         out["why_excited"] = str(data.get("why_excited", ""))[:600]
         out["cultural_fit"] = str(data.get("cultural_fit", ""))[:400]
         emph = data.get("emphasis", "")
@@ -304,6 +336,61 @@ def research_application_context(job: dict, profile: dict, cv_text: str, unmet: 
     except Exception as ex:
         out["error"] = f"Research failed: {type(ex).__name__}: {ex}"
     return out
+
+
+def infer_rationale(instruction: str, before: str = "", after: str = "") -> str:
+    """Turn a one-off AI-rewrite prompt (+ before/after) into a SHORT, reusable style
+    rule in the candidate's voice — so the prompt itself educates the learning loop."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key or not (instruction or "").strip():
+        return ""
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        system = (
+            "Infer the REUSABLE writing preference behind a candidate's one-off rewrite "
+            "instruction, phrased as one short rule in his own blunt voice (e.g. 'lead with the "
+            "metric, cut adjectives' or 'no em-dashes; plain verbs'). GENERALISE — drop anything "
+            "specific to this one passage, company or role. British spelling. Output ONLY the rule.")
+        user = (f"Rewrite instruction: {instruction}\n\nBefore:\n{(before or '')[:600]}\n\n"
+                f"After:\n{(after or '')[:600]}")
+        msg = client.messages.create(model=DEFAULT_MODEL, max_tokens=120, system=system,
+                                     messages=[{"role": "user", "content": user}])
+        return "".join(b.text for b in msg.content if b.type == "text").strip().strip('"')
+    except Exception:
+        return ""
+
+
+def _normalize_cv_html(cv_html: str) -> str:
+    """Keep the print/preview layout robust against the model's tag drift.
+
+    Only the FIRST <h3> is the name; the print CSS styles every <h3> as the big
+    centered name, so when the model emits a company header (a markdown '###') as
+    <h3> instead of <div class='role-h'>, it renders as a giant centered title and
+    the CV looks broken. Demote any non-first <h3> to a role/section header."""
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return cv_html
+    soup = BeautifulSoup(cv_html or "", "html.parser")
+    for h in soup.find_all("h3")[1:]:
+        h.name = "div"
+        h["class"] = ["role-h"]
+    # A role-h whose text carries a year is really a job-title/date line, not a blue
+    # rule header (section + company headers never contain a year). Make it the bold
+    # title paragraph the reference layout expects.
+    year = re.compile(r"\b(19|20)\d{2}\b")
+    for d in soup.find_all("div", class_="role-h"):
+        if year.search(d.get_text(" ", strip=True)):
+            d.name = "p"
+            del d["class"]
+            if not d.find("strong"):                 # bold the line if it isn't already
+                inner = d.decode_contents()
+                d.clear()
+                st = soup.new_tag("strong")
+                st.append(BeautifulSoup(inner, "html.parser"))
+                d.append(st)
+    return str(soup) if (soup.find("h3") is not None or "role-h" in (cv_html or "")) else cv_html
 
 
 def _insert_default_pagebreaks(cv_html: str) -> str:
@@ -459,6 +546,7 @@ def draft_documents(job_dict: dict, base_cv: str, base_cl: str,
         mode=job_dict.get("mode", ""),
         jd=(job_dict.get("description", "") or "")[:MAX_JD_CHARS],
         opener=opener,
+        angle=(ctx.get("angle") or "").strip() or "(not supplied)",
         why_excited=(ctx.get("why_excited") or "").strip() or "(not supplied)",
         gap=(ctx.get("gap") or "").strip() or "(not supplied)",
         cultural_fit=(ctx.get("cultural_fit") or "").strip() or "(not supplied)",
@@ -482,7 +570,7 @@ def draft_documents(job_dict: dict, base_cv: str, base_cl: str,
         raw = "".join(b.text for b in msg.content if b.type == "text")
         parts = _split_sections(raw)
         return Draft(
-            cv_html=_insert_default_pagebreaks(_strip_prose_emdash(parts["cv"])),
+            cv_html=_insert_default_pagebreaks(_normalize_cv_html(_strip_prose_emdash(parts["cv"]))),
             cl_html=_strip_prose_emdash(parts["cl"]),
             screening_html=_split_screening(_strip_prose_emdash(parts["sq"])),
             generated_at=_now(),

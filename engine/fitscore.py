@@ -128,8 +128,12 @@ ANALYSIS_FORMAT = """Return ONLY a JSON object:
    is — the main things that lifted it and the main things that held it back",
  "best_fit":"2-4 sentences: where this role fits the candidate well and why",
  "shortcomings":"2-4 sentences: where it's a weak fit, risks, or gaps, and why",
- "skills_matched":["<exact skill from the provided candidate-skills list that this
-   role clearly values or requires>", ...],
+ "skills_required":["<a concrete skill / competency / tool the JD explicitly asks
+   for or clearly values — a SHORT tag (<= 4 words), taken from THIS job's
+   description. 8-16 items. These are the ROLE's requirements scraped from the JD,
+   NOT the candidate's generic skill list>", ...],
+ "skills_matched":["<the subset of skills_required that the candidate CLEARLY HAS,
+   judged from their CV + summary + strengths>", ...],
  "unmet":["<a requirement the JD ASKS FOR that the candidate clearly does NOT
    have — direction is JD→candidate>", ...],
  "breakdown":[{"label":"Skills & qualifications","score":<0-100>,"note":"<= 8 words"},
@@ -160,8 +164,10 @@ def analyze(job: dict, profile: dict, cv_text: str, score: int = None) -> dict:
     """On-demand deep fit analysis for one job (score rationale, best-fit,
     shortcomings, semantic skills)."""
     skills = profile.get("skills", [])
+    # skills_all is now scraped from THIS JD (the role's required skills), not the
+    # candidate's fixed list — filled from the model's skills_required below.
     result = {"score_rationale": "", "best_fit": "", "shortcomings": "",
-              "breakdown": [], "skills_matched": [], "skills_all": skills,
+              "breakdown": [], "skills_matched": [], "skills_all": [],
               "unmet": [], "error": "", "generated_at": _now()}
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -192,12 +198,17 @@ def analyze(job: dict, profile: dict, cv_text: str, score: int = None) -> dict:
         result["score_rationale"] = str(data.get("score_rationale", ""))[:600]
         result["best_fit"] = str(data.get("best_fit", ""))[:1200]
         result["shortcomings"] = str(data.get("shortcomings", ""))[:1200]
+        # skills_all = the skills THIS JD asks for (scraped from the JD); fall back
+        # to the candidate's profile skills only if the model returned none.
+        req = [str(s).strip() for s in (data.get("skills_required") or []) if str(s).strip()]
+        skills_all = req[:18] if req else list(skills)
+        result["skills_all"] = skills_all
         matched = data.get("skills_matched") or []
-        # map each returned skill to a real profile skill — exact OR substring either way,
-        # so paraphrases ("a/b testing" vs "experimentation") aren't silently dropped to 0.
+        # map each matched skill onto a skills_all tag — exact OR substring either way,
+        # so paraphrases aren't silently dropped to 0.
         def _canon(m):
             ml = str(m).lower().strip()
-            for s in skills:
+            for s in skills_all:
                 sl = s.lower()
                 if ml == sl or (len(ml) >= 4 and (ml in sl or sl in ml)):
                     return s

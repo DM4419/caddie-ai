@@ -59,6 +59,7 @@ class Job(BaseModel):
     live_checked_at: str = ""       # ISO timestamp of the last liveness check
     analysis: Optional["Analysis"] = None
     jd: Optional["JDDoc"] = None
+    questions: List[dict] = Field(default_factory=list)  # fetched ATS screening questions
     draft: Optional["Draft"] = None
 
 
@@ -102,6 +103,7 @@ class Draft(BaseModel):
     model: str = ""
     error: str = ""                 # set when generation failed / no API key
     cv_used: Optional[dict] = None  # {id,name} of the application-CV variant drafted from
+    ctx: Optional[dict] = None      # the research/framing used (angle, why, gap, fit, emphasis, opener, hooks)
 
 
 Job.model_rebuild()

@@ -137,6 +137,35 @@ def is_fully_remote(text: str) -> bool:
     return bool(_FULLY_REMOTE_RE.search(text or ""))
 
 
+# US detector tuned for free-text JD bodies (NOT location strings): drops the bare
+# "us"/"america"/state-abbreviation matches that trip on prose ("join us", "US
+# market"), keeping strong, unambiguous markers of a US-listed/US-eligible role.
+_US_TEXT_RE = re.compile(
+    r"\b(u\.?s\.?a\.?|united states)\b|"
+    r"\bUS[-\s]based\b|\b(?:in|within|across|located in|reside in) the U\.?S\.?\b|"
+    r"authoriz(?:ed|ation) to work in the (?:united states|u\.?s\.?)\b|"
+    r"\b(new york|san francisco|los angeles|chicago|boston|seattle|austin|miami|"
+    r"denver|atlanta|dallas|houston|philadelphia|phoenix|san diego|portland|"
+    r"nashville|silicon valley|bay area|nyc|brooklyn|manhattan)\b",
+    re.I)
+# An explicit offer of a region the user CAN work from (keeps a US-listed role only
+# if it genuinely also opens up UK/EU — NOT mere 'anywhere in the world' boilerplate).
+_ALLOWED_REGION_RE = re.compile(
+    r"\b(uk|united kingdom|britain|england|ireland|emea|europe|european|\beu\b|"
+    r"germany|france|spain|portugal|netherlands|poland|nordics|dach)\b", re.I)
+
+
+def looks_us_only(text: str) -> bool:
+    """True when a JD body shows the role's stated location/eligibility is US/Americas.
+    Scans the header region (where boards put country/eligibility) so a US role is
+    caught even when its location field is blank/'Remote'. 'Work from anywhere in the
+    world' marketing does NOT keep it; only an explicit UK/EU offer does."""
+    head = (text or "")[:900]
+    if not (_US_TEXT_RE.search(head) or is_americas(head)):
+        return False
+    return not bool(_ALLOWED_REGION_RE.search(head))
+
+
 def fmt_salary(mn, mx, currency: str = "", predicted: bool = False) -> str:
     """Format a min/max salary into a compact range like '£140k–165k' (or '')."""
     def k(v):

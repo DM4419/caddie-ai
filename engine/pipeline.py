@@ -209,16 +209,25 @@ def role_assess(raw: dict, profile: dict) -> dict:
                             profile.get("roles_exclude", []))
 
 
-def geo_excluded(mode: str, location: str, profile: dict) -> bool:
+def geo_excluded(mode: str, location: str, profile: dict, description: str = "") -> bool:
     """Geo-exclude any US / Americas location — including US-remote and even
-    multi-region roles that merely list the US (per the user's 'no US' rule)."""
+    multi-region roles that merely list the US (per the user's 'no US' rule).
+    When the location field is unrevealing ('Remote'/blank), fall back to the JD
+    body so a US-listed role that hid its country still gets dropped."""
     if not profile.get("exclude_us_onsite_hybrid"):
         return False
-    from .textutils import is_americas, is_far_geo, is_us
+    from .textutils import is_americas, is_far_geo, is_remote_friendly, is_us, looks_us_only
     if is_us(location) or is_americas(location):
         return True
     # on-site/hybrid in a far region (India/MENA/APAC) is a hard no — no relocation
     if mode in ("onsite", "hybrid") and is_far_geo(location):
+        return True
+    # location gives no usable region -> consult the JD text (catches US roles stored
+    # as just 'Remote', e.g. aggregator stubs). Region-tagged remote is left alone.
+    loc = (location or "").strip().lower()
+    unrevealing = (loc in ("", "remote", "anywhere", "worldwide", "global")
+                   or loc.startswith("remote")) and not is_remote_friendly(location)
+    if unrevealing and description and looks_us_only(description):
         return True
     return False
 
@@ -289,7 +298,7 @@ def import_raws(raws: list, since: str = None) -> tuple:
     profile = store.load_profile()
     kept, dropped = filter_target_roles(dedupe(raws), profile)
     before = len(kept)
-    kept = [r for r in kept if not geo_excluded(r.get("mode"), r.get("location"), profile)]
+    kept = [r for r in kept if not geo_excluded(r.get("mode"), r.get("location"), profile, r.get("description", ""))]
     dropped += before - len(kept)                  # US hybrid/onsite filtered out
     before = len(kept)
     kept = [r for r in kept if not liveness.looks_dead(r.get("description", ""))]
@@ -303,7 +312,7 @@ def import_raws(raws: list, since: str = None) -> tuple:
     results = score_raws(fresh, profile)
     imported = good = 0
     for raw, result in zip(fresh, results):
-        if geo_excluded(raw.get("mode"), raw.get("location"), profile):
+        if geo_excluded(raw.get("mode"), raw.get("location"), profile, raw.get("description", "")):
             dropped += 1
             continue
         role = role_assess(raw, profile)
@@ -327,7 +336,7 @@ def rescore_all() -> int:
         if not (job.location or "").strip() and raw.get("location"):
             job.location = raw["location"]      # inferred from the JD by the fit model
         # US/Americas-only remote (or US onsite/hybrid) isn't relevant — delete it
-        if geo_excluded(job.mode, job.location, profile):
+        if geo_excluded(job.mode, job.location, profile, job.description):
             store.delete_job(job.id)
             continue
         job.score = result.score

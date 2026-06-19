@@ -255,7 +255,14 @@ def job_detail(job_id: str) -> dict:
         job.status = "review"
         store.save_job(job)
     cvs = store.list_app_cvs()
-    return {"job": job.model_dump(),
+    # Flag an old-format analysis whose skills came from the fixed candidate list
+    # (now they're scraped from the JD) so the client recomputes it once.
+    analysis_stale = False
+    if job.analysis and (job.analysis.skills_all or []):
+        prof_skills = {str(s).strip().lower() for s in (store.load_profile().get("skills") or [])}
+        cur = {str(s).strip().lower() for s in job.analysis.skills_all}
+        analysis_stale = bool(prof_skills) and cur.issubset(prof_skills)
+    return {"job": job.model_dump(), "analysis_stale": analysis_stale,
             "cv_options": [{"id": c["id"], "name": c["name"]} for c in cvs]}
 
 
@@ -291,18 +298,24 @@ class OverrideIn(BaseModel):
     suggested: str = ""
     actual: str = ""
     reason: str = ""
+    instruction: str = ""     # the AI-rewrite prompt, if this edit came from one
 
 
 @app.post("/api/jobs/{job_id}/override")
 def save_override(job_id: str, body: OverrideIn) -> dict:
     """Record a manual CV edit + rationale into style.md so future drafts learn
-    it. Never edits the base CV or this draft's other applications."""
+    it. Never edits the base CV or this draft's other applications. When the edit
+    came from an AI-rewrite prompt and no explicit reason was given, the reusable
+    rationale is inferred from that prompt."""
     job = store.get_job(job_id)
     if not job:
         raise HTTPException(404, "Job not found")
+    reason = (body.reason or "").strip()
+    if not reason and body.instruction.strip():
+        reason = draft_mod.infer_rationale(body.instruction, body.base, body.actual)
     store.append_style_entry(job.role, job.company, body.base, body.suggested,
-                             body.actual, body.reason)
-    return {"ok": True}
+                             body.actual, reason)
+    return {"ok": True, "reason": reason}
 
 
 class DraftIn(BaseModel):
@@ -312,6 +325,8 @@ class DraftIn(BaseModel):
     gap: str = ""             # the honest JD gap to name
     cultural_fit: str = ""    # one true working-style match point
     emphasis: str = ""        # free-text: JD themes to accentuate in the letter
+    angle: str = ""           # framing through-line for the whole pack (from Research)
+    hooks: list = []          # research entry-points (display), persisted with the pack
 
 
 # Flags marking AI-forward / builder cultures where the cheeky opener fits.
@@ -337,12 +352,17 @@ def make_draft(job_id: str, body: Optional[DraftIn] = None) -> dict:
 
     opener = (body.opener if body and body.opener in ("standard", "cheeky")
               else _suggest_opener(job))
-    real_qs = questions.fetch_questions(job.url)        # actual ATS application questions
+    # Prefer questions already fetched earlier in the build (so the same set that
+    # shaped research conditions the draft); fall back to fetching now.
+    real_qs = job.questions or (questions.fetch_questions(job.url) if job.url else [])
+    if real_qs and not job.questions:
+        job.questions = real_qs
     draft = draft_mod.draft_documents(
         {"role": job.role, "company": job.company, "mode": job.mode,
          "description": job.description},
         base_cv, store.read_base_cl(),
         app_ctx={"opener": opener,
+                 "angle": body.angle if body else "",
                  "why_excited": body.why_excited if body else "",
                  "gap": body.gap if body else "",
                  "cultural_fit": body.cultural_fit if body else "",
@@ -352,6 +372,15 @@ def make_draft(job_id: str, body: Optional[DraftIn] = None) -> dict:
     )
     draft.cv_used = ({"id": chosen["id"], "name": chosen["name"]} if chosen
                      else {"id": "", "name": "Matching CV (no variants yet)"})
+    # Persist the research/framing with the pack so the Research tab repopulates
+    # after a reload (it lived only in client memory before -> empty on refresh).
+    draft.ctx = {"opener": (body.opener if body else "") or "",
+                 "angle": body.angle if body else "",
+                 "why_excited": body.why_excited if body else "",
+                 "gap": body.gap if body else "",
+                 "cultural_fit": body.cultural_fit if body else "",
+                 "emphasis": body.emphasis if body else "",
+                 "hooks": (body.hooks if body and body.hooks else [])}
     job.draft = draft
     store.save_job(job)
     return {"draft": draft.model_dump(),
@@ -462,6 +491,20 @@ def refresh_screening(job_id: str) -> dict:
     return {"screening_html": html, "count": len(qs), "questions": [q["text"] for q in qs]}
 
 
+@app.post("/api/jobs/{job_id}/questions")
+def fetch_job_questions(job_id: str) -> dict:
+    """Fetch + persist the live ATS screening questions for this job. Run early in
+    the build so they can inform the research framing and the CV/cover-letter draft
+    (not just the screening answers)."""
+    job = store.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    qs = questions.fetch_questions(job.url) if job.url else []
+    job.questions = qs
+    store.save_job(job)
+    return {"questions": [q.get("text", "") for q in qs], "count": len(qs)}
+
+
 @app.post("/api/jobs/{job_id}/resolve-apply")
 def resolve_apply(job_id: str) -> dict:
     """Follow an aggregator (e.g. Adzuna) redirect to the real listing, set it as the
@@ -499,11 +542,34 @@ def research_context(job_id: str) -> dict:
     job = store.get_job(job_id)
     if not job:
         raise HTTPException(404, "Job not found")
-    unmet = (job.analysis.unmet if job.analysis else None) or job.unmet or []
-    return draft_mod.research_application_context(
+    # The honest gap must be a GENUINE shortfall. Prefer the JD requirement
+    # assessment (mismatch = real gap, then stretch) over the analysis "unmet"
+    # list, which can mislabel a met requirement (e.g. "10+ yrs — solid match").
+    unmet = []
+    if job.jd and job.jd.requirements:
+        unmet = [r.quote for r in job.jd.requirements if r.level == "mismatch"
+                 and not fitscore.is_location_gap(r.quote)]
+        unmet += [r.quote for r in job.jd.requirements if r.level == "stretch"
+                  and not fitscore.is_location_gap(r.quote)]
+    if not unmet:
+        unmet = [u for u in ((job.analysis.unmet if job.analysis else None) or job.unmet or [])
+                 if str(u).strip() and not fitscore.is_location_gap(u)]
+    out = draft_mod.research_application_context(
         {"role": job.role, "company": job.company, "mode": job.mode,
          "location": job.location, "description": job.description},
-        store.load_profile(), store.read_base_cv(), unmet)
+        store.load_profile(), store.read_base_cv(), unmet,
+        app_questions=[q.get("text", "") for q in (job.questions or []) if q.get("text")])
+    # Back-fill the framing onto an existing draft that has none (older packs built
+    # before research was persisted) so the Research tab stops coming up empty and
+    # we don't re-run this every time the job is opened.
+    if (not out.get("error") and job.draft
+            and not (job.draft.ctx and (job.draft.ctx.get("angle") or "").strip())):
+        job.draft.ctx = {"opener": (job.draft.ctx or {}).get("opener", "") if job.draft.ctx else "",
+                         "angle": out.get("angle", ""), "why_excited": out.get("why_excited", ""),
+                         "gap": out.get("gap", ""), "cultural_fit": out.get("cultural_fit", ""),
+                         "emphasis": out.get("emphasis", ""), "hooks": out.get("hooks", [])}
+        store.save_job(job)
+    return out
 
 
 @app.post("/api/jobs/{job_id}/people")
@@ -697,7 +763,17 @@ def make_jd(job_id: str) -> dict:
                 text = fetched
         except Exception as e:
             err = f"Could not fetch the JD page ({type(e).__name__}); showing stored text."
-    res = fitscore.classify_requirements(text, store.load_profile(), store.read_base_cv())
+    if len(text) > len(job.description or ""):
+        job.description = text            # keep the richer JD so geo/scoring see it
+    profile = store.load_profile()
+    # Now that we have the full JD, re-apply the geo gate — aggregator stubs hide a
+    # US-only role behind a 'Remote' location until the body is fetched.
+    if pipeline.geo_excluded(job.mode, job.location, profile, text) and not job.bookmarked:
+        job.archived = True
+        store.save_job(job)
+        return {"jd": None, "geo_excluded": True,
+                "note": "This role is US/Americas-based — outside your geo gate — so it's been moved to Archived."}
+    res = fitscore.classify_requirements(text, profile, store.read_base_cv())
     reqs = [Requirement(**r) for r in res["requirements"]]
     job.jd = JDDoc(text=text, url=job.url, fetched_at=fitscore._now(),
                    error=err or res.get("error", ""),
@@ -731,6 +807,81 @@ def set_status(job_id: str, body: StatusIn) -> dict:
             store.append_skip(job.role, job.company, body.reason)   # down-rank similar
     store.save_job(job)
     return {"ok": True, "status": job.status}
+
+
+@app.post("/api/jobs/{job_id}/learning-recap")
+def learning_recap(job_id: str) -> dict:
+    """After a submit: the edits this application taught (with reasons), and how the
+    re-distilled global rules changed as a result."""
+    job = store.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    text = store.read_style()
+    blocks = [b for b in re.split(r"(?m)^(?=## )", text) if b.startswith("## ")]
+    tag = f"— {(job.role or '?')} @ {(job.company or '?')}"
+    entries = []
+    for b in blocks:
+        head = b.splitlines()[0] if b.splitlines() else ""
+        if tag not in head:
+            continue
+        m = re.search(r'AI suggested: "(.*?)"\n- Changed to: "(.*?)"\n- Reason: (.*)', b, re.S)
+        if m:
+            entries.append({"suggested": m.group(1).strip(), "changed": m.group(2).strip(),
+                            "reason": m.group(3).strip()})
+        else:
+            entries.append({"suggested": "", "changed": "",
+                            "reason": b.split("Reason:")[-1].strip()})
+    before = store.read_style_rules()
+    from engine import learndistill
+    learndistill.rebuild_if_stale()                     # fold the new edits into the rules
+    after = store.read_style_rules()
+    # Compare on a normalised key so cosmetic rewording during re-distillation
+    # doesn't masquerade as a brand-new global rule.
+    def _norm(s: str) -> str:
+        return re.sub(r"[^a-z0-9 ]", "", s.lower()).strip()
+    before_keys = {_norm(ln) for ln in before.splitlines() if ln.strip().startswith("-")}
+    new_rules = [ln.strip().lstrip("-").strip()
+                 for ln in after.splitlines()
+                 if ln.strip().startswith("-") and _norm(ln) and _norm(ln) not in before_keys]
+    return {"entries": entries, "count": len(entries), "rules": after, "new_rules": new_rules}
+
+
+# The files that steer drafting + scoring, exposed read-only so the user can
+# review what conditions the agent (linked from the post-submit learning recap).
+GUIDING_FILES = {
+    "rules":     ("Drafting rules (distilled)", store.read_style_rules,
+                  "Condensed guidelines + guardrails applied to every draft."),
+    "edits":     ("Edit log (raw accepted edits)", store.read_style,
+                  "Your accepted draft edits with reasons — the source the rules are distilled from."),
+    "strengths": ("Strengths (positive anchors)", store.read_strengths,
+                  "Treated as MET in scoring & JD-fit, and surfaced in drafts — never flagged as gaps."),
+    "likes":     ("Liked roles (up-rank anchors)", store.read_likes,
+                  "Why you wanted similar roles — up-ranks them in future scoring."),
+    "skips":     ("Skipped roles (down-rank anchors)", store.read_skips,
+                  "Why you passed on similar roles — down-ranks them in future scoring."),
+}
+
+
+@app.get("/api/guiding/{name}", response_class=HTMLResponse)
+def view_guiding(name: str) -> str:
+    """A styled read-only view of one guiding file (opened from the learning recap)."""
+    import html as _html
+    item = GUIDING_FILES.get(name)
+    if not item:
+        raise HTTPException(404, "Unknown guiding file")
+    title, reader, desc = item
+    content = (reader() or "").strip()
+    body = _html.escape(content) if content else "(empty — nothing recorded here yet)"
+    return (f"<!doctype html><html><head><meta charset=utf-8>"
+            f"<meta name=viewport content='width=device-width,initial-scale=1'>"
+            f"<title>{_html.escape(title)}</title><style>"
+            "body{font:14px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"
+            "max-width:760px;margin:40px auto;padding:0 20px;color:#1e2227}"
+            "h1{font-size:18px;margin:0 0 4px}.desc{color:#667085;margin-bottom:16px;font-size:13px}"
+            "pre{white-space:pre-wrap;background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;"
+            "padding:16px;font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace}</style></head>"
+            f"<body><h1>{_html.escape(title)}</h1><div class=desc>{_html.escape(desc)}</div>"
+            f"<pre>{body}</pre></body></html>")
 
 
 class RewriteIn(BaseModel):
@@ -1236,7 +1387,7 @@ def board_preview(board_id: str, body: BoardFetchIn) -> dict:
     results = pipeline.score_raws(kept, profile)   # infers location where blank
     rows = []
     for raw, sr in zip(kept, results):
-        if pipeline.geo_excluded(raw.get("mode"), raw.get("location"), profile):
+        if pipeline.geo_excluded(raw.get("mode"), raw.get("location"), profile, raw.get("description", "")):
             dropped += 1                            # US/Americas-only — not relevant
             continue
         rows.append({

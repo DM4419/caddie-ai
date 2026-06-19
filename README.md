@@ -1,3 +1,11 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="Caddie AI" width="380">
+</p>
+
+<p align="center"><em>An open-source co-pilot for your job search — it scores roles against your CV, drafts tailored applications, shortlists people to reach out to, and learns from your edits. Runs entirely on your machine.</em></p>
+
+---
+
 # caddie-ai
 
 An open-source tool I built for my own job search, then tidied up to share with friends
@@ -38,26 +46,30 @@ leave it.
 
 ## The system at a glance
 
-caddie-ai is a **closed loop**, not a one-shot generator. Four engines feed each other, and
+caddie-ai is a **closed loop**, not a one-shot generator. Each stage feeds the next, and
 the output of your own judgement is captured and fed back in:
 
 ```
-        ┌──────────── you skip / accept / edit ───────────┐
-        │                                                 │
-        ▼                                                 │
-   ┌─────────┐    ┌──────────┐    ┌──────────┐    ┌───────┴────────┐
-   │ SOURCE  │ ─► │  SCORE   │ ─► │  DRAFT   │ ─► │  REVIEW & SUBMIT │
-   │ tiered  │    │ fit vs   │    │ tailored │    │  (you, manually) │
-   │ boards  │    │ your CV  │    │ CV/CL/Q  │    └────────┬────────┘
-   └─────────┘    └────┬─────┘    └────▲─────┘             │
-                       │ matched/      │ learned rules,    │
-                       │ unmet reqs    │ examples, anchors  │
-                       ▼               │                    ▼
-                 ┌─────────────────────┴───────────────────────┐
-                 │  LEARNING LAYER  (style.md · skips · strengths)│
-                 │  your edits + reasons → distilled → next draft │
-                 └────────────────────────────────────────────────┘
+   ┌─────────── you skip / accept / edit / apply ───────────┐
+   │                                                        │
+   ▼                                                        │
+┌────────┐  ┌────────┐  ┌──────────────────────────────┐  ┌─┴──────────────┐
+│ SOURCE │─►│ SCORE  │─►│   BUILD APPLICATION PACK      │─►│ REVIEW & SUBMIT │
+│ tiered │  │ fit vs │  │ JD fit → screening questions  │  │ (you, manually) │
+│ boards │  │ your CV│  │ → research → CV / CL / answers │  └───────┬────────┘
+└────────┘  └───┬────┘  └───────────────▲──────────────┘          │
+                │ matched /              │ learned rules,           │
+                │ unmet reqs            │ examples, anchors         │
+                ▼                       │                           ▼
+          ┌─────────────────────────────┴────────────────────────────┐
+          │  LEARNING LAYER  (style · skips · strengths · likes)        │
+          │  your edits + reasons → distilled → next draft; on submit,  │
+          │  a recap shows exactly what it learned                      │
+          └────────────────────────────────────────────────────────────┘
 ```
+
+> Alongside the pack, **People** shortlists who to contact at the company (hiring manager, team
+> PMs, recruiter) with ready-made LinkedIn searches and a short, grounded outreach note.
 
 Each stage does a specific job — and each has a deliberate design choice behind it:
 
@@ -80,17 +92,26 @@ against your CV and gives a four-dimension fit breakdown. *Where it's clever:* i
 words), quotes the JD **verbatim** so every gap is auditable, and folds in your saved
 **strengths** (treated as met) and **skips** (negative signals) so it learns what you don't want.
 
-**4 · Drafting** — tailors your CV + cover letter and answers the *real* screening questions,
-marking every change with its original text + rationale. *Where it's clever:* it routes to the
-right **base-CV variant** per role (founder / Web3 / voice-AI / …), keeps the cover letter's
-proven backbone, and **refuses to invent** a fact — leaving you a visible placeholder instead —
-while pulling the matched strengths and honest gaps straight from scoring into the draft.
+**4 · Building the application pack** — one click runs the whole sequence in order: **assess the
+JD requirements → fetch the real screening questions → research the role & company → draft the
+CV, cover letter and answers**. *Where it's clever:* the **research runs first and feeds the whole
+pack** — a single framing (angle, why-excited, honest gap, cultural fit, emphasis) leads the CV,
+cover letter *and* the screening answers, and the actual application questions are pulled in early
+so the draft is written to answer what the employer really asks. Every change is marked with its
+original text + rationale, it routes to the right **base-CV variant** per role, keeps the cover
+letter's proven backbone, and **refuses to invent** a fact — leaving a visible placeholder instead.
+The framing lives in its own **Research tab**, with JD fit and the documents beside it.
 
-**5 · Learning** — every edit you accept, every role you skip, and your stated strengths are
-captured and **distilled into reusable rules** that condition the next draft. *Where it's
-clever:* re-distillation runs **right before each generation, but only when something changed** —
-so drafts always reflect your latest edits with no stale scheduled job. This is the part that
-compounds: the first draft is generic, the tenth sounds like you.
+**5 · Outreach** — for any role, **People** shortlists who to contact (hiring manager, fellow PMs,
+recruiter) with ready-made LinkedIn searches and a short outreach note grounded in the JD and your
+background — so applying isn't only dropping a CV into the void.
+
+**6 · Learning** — every edit you accept, every role you skip or mark "more like this", and your
+stated strengths are captured and **distilled into reusable rules** that condition the next draft.
+*Where it's clever:* re-distillation runs **right before each generation, but only when something
+changed**, and the moment you mark a role applied a **learning recap** shows exactly what that
+submission taught and whether it changed your global rules. This is the part that compounds: the
+first draft is generic, the tenth sounds like you.
 
 ## Screenshots
 
@@ -225,9 +246,18 @@ every run, and the window is a single config value you can widen or narrow.
 
 ## How drafting works
 
-For a role worth pursuing, the drafter tailors your base CV + cover letter and answers
-screening questions in one pass:
+For a role worth pursuing, **Build Application Pack** runs an ordered sequence rather than a
+single prompt — JD fit → screening questions → research → CV / cover letter / answers:
 
+- **Research-first, shared framing.** Before any document is written, the app researches the role
+  and company and produces one **framing** — the angle to lead with, why-excited, the honest gap,
+  cultural fit, and emphasis. That same framing then conditions the CV, the cover letter *and* the
+  screening answers, so the whole pack tells one coherent story. You can edit any field and
+  rebuild, or hit **↻ Regenerate** — it lives in a dedicated **Research tab** next to JD fit and
+  the documents.
+- **Questions pulled in early.** The real screening questions are fetched up front (Greenhouse /
+  Lever / Ashby / …) so research and the draft are written to answer what the employer actually
+  asks — not just generic prose.
 - **Per-gig base-CV routing.** You keep several base CVs, each flagged for a kind of role
   (e.g. **Founder**, **EIR / founder-welcome**, **Web3 / Blockchain**, **Voice AI**, **0→1
   build**). Before tailoring, the drafter auto-picks the closest-fit base from the job's
@@ -260,14 +290,14 @@ adapters/   board fetchers, organised by reliability tier:
               listing  — fast static HTML
               browser  — Playwright, rate-limited, indexes only matching rows
 engine/     fetch (URL→JD) · score + fitscore (weighted + AI fit, requirement check)
-            · draft (tailoring + provenance) · learndistill (the learning loop)
-            · clchanges (bulk CL diff→reasons) · questions (screening) · pipeline
-            · store (one normalised Job shape + all persistence) · models (pydantic)
+            · draft (research + tailoring + provenance) · learndistill (the learning loop)
+            · people (LinkedIn outreach shortlist) · clchanges (bulk CL diff→reasons)
+            · questions (screening) · pipeline · store (one Job shape) · models (pydantic)
 ui/         FastAPI backend + a static single-page UI
 cv/         base-cv.md, base-cl.md  (your source documents)
 data/       boards.yaml · profile.yaml (criteria + weights) · applications.csv (tracker)
             · style.md / style-rules.md / style-examples.md (the learning layer)
-            · skips.md (negative anchors) · strengths.md (positive anchors)
+            · skips.md (negative anchors) · likes.md (more-like-this) · strengths.md (positive anchors)
 docs/       UX design specs (v1→v4)
 ```
 

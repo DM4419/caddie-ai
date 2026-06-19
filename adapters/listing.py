@@ -129,11 +129,31 @@ def _next_url(html: str, cur: str) -> str:
     return urljoin(cur, a["href"]) if a and a.get("href") else ""
 
 
+def _expired_urls(html: str, base: str) -> set:
+    """URLs of result cards explicitly marked filled/expired (e.g. intelligentpeople's
+    `div.expired--message`), so they're dropped whichever extractor produced them."""
+    from adapters import url_key
+    soup = BeautifulSoup(html or "", "html.parser")
+    out = set()
+    for mark in soup.find_all(class_=re.compile(r"expired", re.I)):
+        a = mark.find_parent("a", href=True)
+        if not a:
+            card = mark.find_parent(["article", "li", "div"])
+            a = card.find("a", href=True) if card else None
+        if a and a.get("href"):
+            out.add(url_key(urljoin(base, a["href"])))
+    return out
+
+
 def _extract_page(html: str, src: str, base: str) -> list:
     jobs = extract_jobpostings(html, source=src, base_url=base)
     if not jobs:
         from adapters import browser
         jobs = browser.heuristic_jobs(html, base, src)
+    expired = _expired_urls(html, base)          # drop filled/expired postings at fetch time
+    if expired:
+        from adapters import url_key
+        jobs = [j for j in jobs if url_key(j.get("url", "")) not in expired]
     return jobs
 
 
