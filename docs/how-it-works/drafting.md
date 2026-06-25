@@ -8,8 +8,18 @@ single prompt — JD fit → screening questions → research → CV / cover let
   gap, cultural fit, emphasis. That same framing conditions the CV, the cover letter *and* the
   screening answers, so the whole pack tells one coherent story. Editable in a dedicated
   **Research tab**; rebuild any time.
-- **Questions pulled in early.** Real screening questions are fetched up front (Greenhouse /
-  Lever / Ashby / …) so the draft answers what the employer actually asks.
+- **Questions pulled in early.** Real screening questions are fetched up front from the *real*
+  apply page (it follows an aggregator link to the underlying Greenhouse / Lever / Ashby board),
+  so the draft answers what the employer actually asks.
+- **Editable drafting doctrines.** The voice and structure rules for the **cover letter**, **CV
+  summary**, and **screening answers** live in plain spec files, loaded into the prompt
+  (**prompt-cached**) before your learned preferences (which win on conflicts). Each is **scoped to
+  its own document** so the letter's structure can't leak into the answers, and all three are
+  editable in **Settings → Drafting doctrine**.
+- **Strengthen your match.** In the JD-fit tab, each requirement is mapped to a **CV-grounded
+  bullet** you accept or rewrite — tagged with the CV experience it belongs under and a
+  *include-in-cover-letter* toggle. On rebuild, your bullets are woven into the right CV role and,
+  if ticked, the letter. Never fabricated beyond what you supply.
 - **Per-gig base-CV routing.** Keep several base CVs, each flagged for a kind of role (Founder,
   EIR / founder-welcome, Web3, Voice AI, 0→1). The drafter auto-picks the closest-fit base from
   the job's detected flags (`_suggest_app_cv`); you can override per draft.
