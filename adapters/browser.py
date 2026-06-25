@@ -76,6 +76,59 @@ def render(url: str, settle_ms: int = 1500) -> str:
             browser.close()
 
 
+_ATS_URL_RE = re.compile(
+    r"https?://(?:job-boards|boards)\.greenhouse\.io/[a-z0-9_-]+/jobs/\d+"
+    r"|https?://jobs\.lever\.co/[a-z0-9_-]+/[a-z0-9-]+"
+    r"|https?://jobs\.ashbyhq\.com/[a-z0-9_-]+/[a-z0-9-]+"
+    r"|https?://apply\.workable\.com/[a-z0-9_-]+", re.I)
+
+
+def resolve_apply(url: str, settle_ms: int = 1500) -> str:
+    """Navigate an aggregator/apply link in a REAL browser (gets past bot walls that
+    429 httpx) and return the underlying real apply URL — following an embedded ATS
+    link or a tokenised 'apply' redirect (e.g. Adzuna's /jobs/land/ad/<id>). '' on fail."""
+    from urllib.parse import urljoin
+
+    from playwright.sync_api import sync_playwright
+    _throttle()
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled", "--no-sandbox"])
+        ctx = browser.new_context(
+            user_agent=UA, locale="en-GB", timezone_id="Europe/London",
+            viewport={"width": 1280, "height": 900},
+            extra_http_headers={"Accept-Language": "en-GB,en;q=0.9"})
+        ctx.add_init_script(_STEALTH)
+        page = ctx.new_page()
+        try:
+            page.goto(url, wait_until="domcontentloaded", timeout=45000)
+            page.wait_for_timeout(settle_ms)
+            if _ATS_URL_RE.search(page.url):           # already redirected to the ATS
+                return page.url
+            html = page.content()
+            m = _ATS_URL_RE.search(html)               # ATS link embedded in the page
+            if m:
+                return m.group(0)
+            m2 = re.search(r'(/jobs/land/ad/\d+\?[^"\'\s]+)', html)  # aggregator apply redirect
+            if m2:
+                host = urlparse(page.url).netloc
+                page.goto(urljoin(page.url, m2.group(1).replace("&amp;", "&")),
+                          wait_until="domcontentloaded", timeout=45000)
+                try:                                   # the land page JS-redirects onward
+                    page.wait_for_url(lambda u: urlparse(u).netloc != host, timeout=15000)
+                except Exception:
+                    pass
+                page.wait_for_timeout(settle_ms)
+                return page.url if urlparse(page.url).netloc != host else ""
+            return ""
+        except Exception:
+            return ""
+        finally:
+            ctx.close()
+            browser.close()
+
+
 def _source_name(url: str) -> str:
     host = urlparse(url).netloc.replace("www.", "")
     return host.split(".")[0].title() if host else "Board"

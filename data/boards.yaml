@@ -36,6 +36,34 @@ boards:
   auth: token
   enabled: true
   note: Live. Token in .env; supports remote filter + real pagination.
+- name: Remotive
+  tier: api
+  region: remote
+  url: https://remotive.com/remote-jobs/product
+  endpoint: https://remotive.com/api/remote-jobs
+  auth: none
+  enabled: true
+  note: Public JSON API, no key. Keeps the Product-Management category client-side
+    (server-side search is ignored). All remote; jobs delayed ~24h; credit Remotive.
+- name: Himalayas
+  tier: api
+  region: remote
+  url: https://himalayas.app/jobs
+  endpoint: https://himalayas.app/jobs/api
+  auth: none
+  enabled: true
+  note: Free JSON API, no key. 20 jobs/request, no server-side filter and not
+    date-ordered, so we page a bounded budget + filter to product roles (limited
+    yield per scan). All remote; attribution required.
+- name: Arbeitnow
+  tier: api
+  region: global
+  url: https://www.arbeitnow.com/
+  endpoint: https://www.arbeitnow.com/api/job-board-api
+  auth: none
+  enabled: true
+  note: Free Job Board API, no key. EU-weighted, sourced mostly from ATS platforms.
+    Paginated feed; we keep product-titled roles client-side.
 - name: Cryptocurrency Jobs
   tier: browser
   region: remote
@@ -140,7 +168,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Lever board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Lever board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: ElevenLabs
   tier: ats
   region: global
@@ -151,7 +180,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Helsing
   tier: ats
   region: global
@@ -162,7 +192,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Greenhouse board. Voice-AI / AI company aligned with the
+    target founder profile.
 - name: Sierra
   tier: ats
   region: global
@@ -173,7 +204,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Cohere
   tier: ats
   region: global
@@ -184,7 +216,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Wayve
   tier: ats
   region: global
@@ -195,7 +228,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Greenhouse board. Voice-AI / AI company aligned with the
+    target founder profile.
 - name: Decagon
   tier: ats
   region: global
@@ -206,7 +240,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: LangChain
   tier: ats
   region: global
@@ -217,7 +252,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Cresta
   tier: ats
   region: global
@@ -228,7 +264,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Greenhouse board. Voice-AI / AI company aligned with the
+    target founder profile.
 - name: Aircall
   tier: ats
   region: global
@@ -239,7 +276,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Lever board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Lever board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Synthesia
   tier: ats
   region: global
@@ -250,7 +288,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Deepgram
   tier: ats
   region: global
@@ -261,7 +300,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Lovable
   tier: ats
   region: global
@@ -272,7 +312,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Greenhouse board. Voice-AI / AI company aligned with the
+    target founder profile.
 - name: Parloa
   tier: ats
   region: global
@@ -283,7 +324,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Greenhouse board. Voice-AI / AI company aligned with the
+    target founder profile.
 - name: n8n
   tier: ats
   region: global
@@ -294,7 +336,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Cartesia
   tier: ats
   region: global
@@ -305,7 +348,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: H Company
   tier: ats
   region: global
@@ -316,7 +360,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Vapi
   tier: ats
   region: global
@@ -327,7 +372,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Dust
   tier: ats
   region: global
@@ -338,7 +384,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: DeepL
   tier: ats
   region: global
@@ -349,7 +396,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: LiveKit
   tier: ats
   region: global
@@ -360,7 +408,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Retell AI
   tier: ats
   region: global
@@ -371,7 +420,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: HeyGen
   tier: ats
   region: global
@@ -382,7 +432,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Greenhouse board. Voice-AI / AI company aligned with the
+    target founder profile.
 - name: Speechmatics
   tier: ats
   region: global
@@ -393,7 +444,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Greenhouse board. Voice-AI / AI company aligned with the
+    target founder profile.
 - name: Poolside
   tier: ats
   region: global
@@ -404,7 +456,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Granola
   tier: ats
   region: global
@@ -415,7 +468,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Black Forest Labs
   tier: ats
   region: global
@@ -426,7 +480,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Greenhouse board. Voice-AI / AI company aligned with the
+    target founder profile.
 - name: PolyAI
   tier: ats
   region: global
@@ -437,7 +492,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Greenhouse board. Voice-AI / AI company aligned with the
+    target founder profile.
 - name: Nabla
   tier: ats
   region: global
@@ -448,7 +504,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Bland AI
   tier: ats
   region: global
@@ -459,7 +516,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Rime
   tier: ats
   region: global
@@ -470,7 +528,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Synthflow
   tier: ats
   region: global
@@ -481,7 +540,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Aleph Alpha
   tier: ats
   region: global
@@ -492,7 +552,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Tavus
   tier: ats
   region: global
@@ -503,7 +564,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Pinecone
   tier: ats
   region: global
@@ -514,7 +576,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Stability AI
   tier: ats
   region: global
@@ -525,7 +588,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Greenhouse board. Voice-AI / AI company aligned with the
+    target founder profile.
 - name: Weaviate
   tier: ats
   region: global
@@ -536,7 +600,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Builder.ai
   tier: ats
   region: global
@@ -547,7 +612,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Greenhouse board. Voice-AI / AI company aligned with the
+    target founder profile.
 - name: Nous Research
   tier: ats
   region: global
@@ -558,7 +624,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Phonic
   tier: ats
   region: global
@@ -569,7 +636,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Hume AI
   tier: ats
   region: global
@@ -580,7 +648,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Greenhouse board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Greenhouse board. Voice-AI / AI company aligned with the
+    target founder profile.
 - name: Smallest AI
   tier: ats
   region: global
@@ -591,7 +660,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Continue
   tier: ats
   region: global
@@ -602,7 +672,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Lindy
   tier: ats
   region: global
@@ -613,7 +684,8 @@ boards:
   auth: none
   enabled: true
   custom: true
-  note: Direct employer — Ashby board. Voice-AI / AI company focused on AI / voice AI.
+  note: Direct employer — Ashby board. Voice-AI / AI company aligned with the target
+    founder profile.
 - name: Harvey
   tier: ats
   region: global
@@ -1692,3 +1764,1846 @@ boards:
   note: Recruiter — listing board (PM-relevant; role gate filters to product roles).
   search_template: ''
   search_sep: '%20'
+- name: Harveynash
+  tier: browser
+  region: ''
+  url: https://www.harveynash.co.uk/jobs/#/project-change-management
+  search_template: ''
+  search_sep: ''
+  auth: none
+  enabled: true
+  custom: true
+  note: Browser tier — renders the page with Playwright (rate-limited), scrapes this
+    one URL. Won't defeat heavy bot walls (e.g. Glassdoor).
+# --- Aggregator APIs (key required; adapter pending). Disabled until a key is in
+# --- .env and a fetcher module is wired in BOARD_FETCHERS. High-leverage breadth.
+- name: TheirStack
+  tier: api
+  region: global
+  url: https://app.theirstack.com/jobs
+  endpoint: https://api.theirstack.com/v1/jobs/search
+  auth: api_key
+  enabled: true
+  note: Live. Aggregates 347k+ sources incl. ATS, server-side dedup. Paid per job
+    returned (~$0.0015-$0.039), so the query is funnelled by title + target-domain
+    keyword + UK/Europe location + recency. Tune LOCATIONS / DOMAIN_SIGNALS in
+    adapters/theirstack.py. Key in .env (THEIRSTACK_API_KEY).
+- name: Google Jobs
+  tier: api
+  region: global
+  url: https://www.google.com/search?q=product+manager&ibp=htl;jobs
+  endpoint: https://serpapi.com/search?engine=google_jobs
+  auth: api_key
+  enabled: true
+  note: Live via SerpAPI (engine=google_jobs). Query-based — one search per role
+    title, UK-biased (gl=uk); paid per search (free tier ~100/mo), capped at 3 pages.
+    Key in .env (SERPAPI_KEY).
+# --- Scrape-tier remote boards (browser/listing; selectors need per-site checking).
+# --- Disabled by default per the "easy API tier first, fragile tier last" rule.
+- name: Arc.dev
+  tier: listing
+  region: remote
+  url: https://arc.dev/remote-jobs/product-manager
+  search_template: ''
+  search_sep: '%20'
+  auth: none
+  enabled: true
+  note: Live. Static JobPosting JSON-LD (~10/page, no browser needed). Verified
+    reachable; role gate filters to product roles.
+- name: 4 Day Week
+  tier: listing
+  region: remote
+  url: https://4dayweek.io/remote-jobs/product-manager
+  search_template: https://4dayweek.io/remote-jobs/{q}
+  search_sep: '-'
+  auth: none
+  enabled: true
+  note: Live. Static JobPosting JSON-LD (~10/page). Fans out over role queries via
+    the {q} template.
+- name: JustRemote
+  tier: browser
+  region: remote
+  url: https://justremote.co/remote-project-manager-jobs
+  search_template: ''
+  search_sep: '%20'
+  auth: none
+  enabled: true
+  note: Live (browser tier — SPA, needs Playwright). The 'project-manager' category
+    page is mostly real Product Manager roles (~7/page); role gate keeps the product
+    ones. Static fetch sees 0, so it must stay browser-tier.
+- name: NoDesk
+  tier: listing
+  region: remote
+  url: https://nodesk.co/remote-jobs/product/
+  search_template: ''
+  search_sep: '%20'
+  auth: none
+  enabled: true
+  note: Live. Static JobPosting JSON-LD (~50/page). Verified reachable; role gate
+    filters to product roles.
+- name: Dynamite Jobs
+  tier: browser
+  region: remote
+  url: https://dynamitejobs.com/remote-jobs/product?text=product
+  search_template: ''
+  search_sep: '%20'
+  auth: none
+  enabled: true
+  note: Live (browser tier). Low yield — only ~1 job is server-rendered per load (the
+    rest load via API), and the heuristic adds nav noise that the role gate filters
+    out. A custom extractor / its API would raise yield.
+# --- PropTech (UK/EU) — ATS boards verified live; role gate filters to product roles.
+- name: Goodlord
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/goodlord
+  provider: ashby
+  slug: goodlord
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — Ashby board.
+- name: Houseful
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/houseful
+  provider: workable
+  slug: houseful
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — Zoopla / Houseful group, Workable board.
+- name: Casavo
+  tier: ats
+  region: ''
+  url: https://jobs.smartrecruiters.com/casavo
+  provider: smartrecruiters
+  slug: casavo
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (IT) — SmartRecruiters board.
+- name: Spotahome
+  tier: ats
+  region: ''
+  url: https://spotahome.jobs.personio.com
+  provider: personio
+  slug: spotahome
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (ES) — Personio board.
+- name: Wayhome
+  tier: ats
+  region: ''
+  url: https://wayhome.jobs.personio.com
+  provider: personio
+  slug: wayhome
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — Personio board.
+- name: Sensat
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/sensat
+  provider: ashby
+  slug: sensat
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech / construction-tech (UK) — Ashby board.
+- name: Yardi
+  tier: ats
+  region: ''
+  url: https://jobs.smartrecruiters.com/yardi
+  provider: smartrecruiters
+  slug: yardi
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech software — SmartRecruiters board.
+# --- EU VC portfolio boards (Getro platform; one adapter parses __NEXT_DATA__).
+# --- Server-side ?q= targets product roles; each job's url is the real ATS posting.
+- name: Seedcamp
+  tier: getro
+  region: ''
+  url: https://talent.seedcamp.com/jobs
+  group: VC Portfolio
+  auth: none
+  enabled: true
+  custom: true
+  note: Getro VC board — strong UK/EU PM fit (Wise, Pleo, etc.).
+- name: Point Nine
+  tier: getro
+  region: ''
+  url: https://jobs.pointnine.com/jobs
+  group: VC Portfolio
+  auth: none
+  enabled: true
+  custom: true
+  note: Getro VC board — B2B SaaS / fintech, strong EU/UK.
+- name: Cherry Ventures
+  tier: getro
+  region: ''
+  url: https://talent.cherry.vc/jobs
+  group: VC Portfolio
+  auth: none
+  enabled: true
+  custom: true
+  note: Getro VC board — London / Berlin / Munich.
+- name: Speedinvest
+  tier: getro
+  region: ''
+  url: https://careers.speedinvest.com/jobs
+  group: VC Portfolio
+  auth: none
+  enabled: true
+  custom: true
+  note: Getro VC board — Head-of-Product roles, EU/UK (Tide etc.).
+- name: Atomico
+  tier: getro
+  region: ''
+  url: https://careers.atomico.com/jobs
+  group: VC Portfolio
+  auth: none
+  enabled: true
+  custom: true
+  note: Getro VC board — heavy EU/UK/remote.
+- name: Northzone
+  tier: getro
+  region: ''
+  url: https://opportunities.northzone.com/jobs
+  group: VC Portfolio
+  auth: none
+  enabled: true
+  custom: true
+  note: Getro VC board — UK / Dublin / Copenhagen.
+- name: Index Ventures
+  tier: getro
+  region: ''
+  url: https://indexventures.getro.com/jobs
+  group: VC Portfolio
+  auth: none
+  enabled: true
+  custom: true
+  note: Getro VC board — EU/London + remote (large; default view US-skewed).
+- name: HV Capital
+  tier: getro
+  region: ''
+  url: https://hv.getro.com/jobs
+  group: VC Portfolio
+  auth: none
+  enabled: true
+  custom: true
+  note: Getro VC board — DACH-heavy (DE/AT).
+# --- PropTech batch 2 (UK/EU) — ATS boards verified live 2026-06-24.
+- name: Rightmove
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/rightmovecareers
+  provider: greenhouse
+  slug: rightmovecareers
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — greenhouse board.
+- name: Street Group
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/streetgroup
+  provider: ashby
+  slug: streetgroup
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — ashby board.
+- name: Orbital Witness
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/orbital
+  provider: ashby
+  slug: orbital
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — ashby board.
+- name: PropHero
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/prophero
+  provider: greenhouse
+  slug: prophero
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK/EU) — greenhouse board.
+- name: Re-Leased
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/released
+  provider: greenhouse
+  slug: released
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK/NZ) — greenhouse board.
+- name: McMakler
+  tier: ats
+  region: ''
+  url: https://jobs.smartrecruiters.com/McMakler1
+  provider: smartrecruiters
+  slug: McMakler1
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (DE) — smartrecruiters board.
+- name: PlanRadar
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/planradar
+  provider: greenhouse
+  slug: planradar
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (AT/EU) — greenhouse board.
+- name: Zoopla
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/zoopla
+  provider: workable
+  slug: zoopla
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — workable board.
+- name: Plentific
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/plentific
+  provider: workable
+  slug: plentific
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — workable board. (no openings now — polled for future product roles)
+- name: PriceHubble
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/pricehubble
+  provider: workable
+  slug: pricehubble
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (CH/EU) — workable board. (no openings now — polled for future product roles)
+- name: Generation Home
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/generationhome
+  provider: workable
+  slug: generationhome
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — workable board. (no openings now — polled for future product roles)
+- name: Nested
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/nested
+  provider: workable
+  slug: nested
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — workable board. (no openings now — polled for future product roles)
+- name: Reposit
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/reposit
+  provider: workable
+  slug: reposit
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — workable board. (no openings now — polled for future product roles)
+- name: Infogrid
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/infogrid
+  provider: workable
+  slug: infogrid
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — workable board. (no openings now — polled for future product roles)
+- name: Disperse
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/disperse
+  provider: workable
+  slug: disperse
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — workable board. (no openings now — polled for future product roles)
+- name: IMMO Capital
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/immo
+  provider: workable
+  slug: immo
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK/EU) — workable board. (no openings now — polled for future product roles)
+- name: Lavanda
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/lavanda
+  provider: workable
+  slug: lavanda
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — workable board. (no openings now — polled for future product roles)
+- name: Yopa
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/yopa
+  provider: workable
+  slug: yopa
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — workable board. (no openings now — polled for future product roles)
+- name: Purplebricks
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/strikeuk
+  provider: workable
+  slug: strikeuk
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — workable board. (no openings now — polled for future product roles)
+- name: Flatfair
+  tier: ats
+  region: ''
+  url: https://jobs.smartrecruiters.com/flatfair
+  provider: smartrecruiters
+  slug: flatfair
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — smartrecruiters board. (no openings now — polled for future product roles)
+- name: Homeday
+  tier: ats
+  region: ''
+  url: https://homeday.jobs.personio.com
+  provider: personio
+  slug: homeday
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (DE) — personio board. (no openings now — polled for future product roles)
+# --- Teamtailor PropTech (public RSS feed; now a first-class ATS provider).
+- name: Reapit
+  tier: ats
+  region: ''
+  url: https://reapit-internalcareers.teamtailor.com
+  provider: teamtailor
+  slug: reapit-internalcareers
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (UK) — Teamtailor board (Product Manager roles).
+- name: Travtus
+  tier: ats
+  region: ''
+  url: https://travtus.teamtailor.com
+  provider: teamtailor
+  slug: travtus
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech / AI multifamily (UK) — Teamtailor board.
+# --- FinTech (UK/EU) — ATS boards verified live 2026-06-24.
+- name: Monzo
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/monzo
+  provider: greenhouse
+  slug: monzo
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — greenhouse board.
+- name: GoCardless
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/gocardless
+  provider: greenhouse
+  slug: gocardless
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — greenhouse board.
+- name: Tide
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/tide
+  provider: greenhouse
+  slug: tide
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — greenhouse board.
+- name: Form3
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/form3
+  provider: greenhouse
+  slug: form3
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — greenhouse board.
+- name: ComplyAdvantage
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/complyadvantage
+  provider: greenhouse
+  slug: complyadvantage
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — greenhouse board.
+- name: SumUp
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/sumup
+  provider: greenhouse
+  slug: sumup
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (DE) — greenhouse board.
+- name: Adyen
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/adyen
+  provider: greenhouse
+  slug: adyen
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (NL) — greenhouse board.
+- name: N26
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/n26
+  provider: greenhouse
+  slug: n26
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (DE) — greenhouse board.
+- name: Modulr
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/modulrfinance
+  provider: greenhouse
+  slug: modulrfinance
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — greenhouse board.
+- name: TrueLayer
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/truelayer
+  provider: greenhouse
+  slug: truelayer
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — greenhouse board.
+- name: Solaris
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/solarisbank
+  provider: greenhouse
+  slug: solarisbank
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (DE) — greenhouse board.
+- name: Qonto
+  tier: ats
+  region: ''
+  url: https://jobs.lever.co/qonto
+  provider: lever
+  slug: qonto
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (FR) — lever board.
+- name: Zopa
+  tier: ats
+  region: ''
+  url: https://jobs.lever.co/zopa
+  provider: lever
+  slug: zopa
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — lever board.
+- name: Swile
+  tier: ats
+  region: ''
+  url: https://jobs.lever.co/swile
+  provider: lever
+  slug: swile
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (FR) — lever board.
+- name: Pleo
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/pleo
+  provider: ashby
+  slug: pleo
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (DK) — ashby board.
+- name: Thought Machine
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/thought-machine
+  provider: ashby
+  slug: thought-machine
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — ashby board.
+- name: Griffin
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/griffin
+  provider: ashby
+  slug: griffin
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — ashby board.
+- name: Mollie
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/mollie
+  provider: ashby
+  slug: mollie
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (NL) — ashby board.
+- name: Marshmallow
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/marshmallow
+  provider: ashby
+  slug: marshmallow
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — ashby board.
+- name: Zilch
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/zilch
+  provider: ashby
+  slug: zilch
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — ashby board.
+- name: Primer
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/primer
+  provider: ashby
+  slug: primer
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — ashby board.
+- name: Paddle
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/paddle
+  provider: ashby
+  slug: paddle
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — ashby board.
+- name: Sona
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/sona
+  provider: ashby
+  slug: sona
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — ashby board.
+- name: Spendesk
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/spendesk
+  provider: ashby
+  slug: spendesk
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (FR) — ashby board. (no openings now — polled)
+- name: Lendable
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/lendable
+  provider: ashby
+  slug: lendable
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — ashby board.
+- name: Wayflyer
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/wayflyer
+  provider: ashby
+  slug: wayflyer
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (IE) — ashby board.
+- name: Freetrade
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/freetrade
+  provider: ashby
+  slug: freetrade
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — ashby board.
+- name: Capchase
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/capchase
+  provider: ashby
+  slug: capchase
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK/ES) — ashby board.
+- name: Wise
+  tier: ats
+  region: ''
+  url: https://jobs.smartrecruiters.com/Wise
+  provider: smartrecruiters
+  slug: Wise
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK/EE) — smartrecruiters board.
+- name: Yapily
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/yapily
+  provider: workable
+  slug: yapily
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — workable board.
+- name: Cledara
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/cledara
+  provider: workable
+  slug: cledara
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — workable board.
+- name: Kroo
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/kroo
+  provider: workable
+  slug: kroo
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — workable board.
+- name: Updraft
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/updraft
+  provider: workable
+  slug: updraft
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (UK) — workable board.
+- name: Bunq
+  tier: ats
+  region: ''
+  url: https://bunq.recruitee.com
+  provider: recruitee
+  slug: bunq
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (NL) — recruitee board.
+- name: Anyfin
+  tier: ats
+  region: ''
+  url: https://anyfin.teamtailor.com
+  provider: teamtailor
+  slug: anyfin
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (SE) — teamtailor board.
+# --- Marketplace / B2B SaaS (UK/EU) — ATS boards verified live 2026-06-24.
+- name: Wolt
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/wolt
+  provider: greenhouse
+  slug: wolt
+  group: Marketplace
+  auth: none
+  enabled: true
+  custom: true
+  note: Marketplace (FI) — greenhouse board.
+- name: Faire
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/faire
+  provider: greenhouse
+  slug: faire
+  group: Marketplace
+  auth: none
+  enabled: true
+  custom: true
+  note: Marketplace (EU/US) — greenhouse board.
+- name: Choco
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/choco
+  provider: ashby
+  slug: choco
+  group: Marketplace
+  auth: none
+  enabled: true
+  custom: true
+  note: Marketplace (DE) — ashby board.
+- name: Vestiaire Collective
+  tier: ats
+  region: ''
+  url: https://jobs.lever.co/vestiairecollective
+  provider: lever
+  slug: vestiairecollective
+  group: Marketplace
+  auth: none
+  enabled: true
+  custom: true
+  note: Marketplace (FR) — lever board.
+- name: Motorway
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/motorway
+  provider: ashby
+  slug: motorway
+  group: Marketplace
+  auth: none
+  enabled: true
+  custom: true
+  note: Marketplace (UK) — ashby board.
+- name: Treatwell
+  tier: ats
+  region: ''
+  url: https://jobs.smartrecruiters.com/Treatwell
+  provider: smartrecruiters
+  slug: Treatwell
+  group: Marketplace
+  auth: none
+  enabled: true
+  custom: true
+  note: Marketplace (UK) — smartrecruiters board. (no openings now — polled)
+- name: Contentful
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/contentful
+  provider: greenhouse
+  slug: contentful
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (DE) — greenhouse board.
+- name: Lokalise
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/lokalise
+  provider: greenhouse
+  slug: lokalise
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (LV) — greenhouse board.
+# --- Marketplace (recovered) — verified live.
+- name: Ankorstore
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/ankorstore
+  provider: ashby
+  slug: ankorstore
+  group: Marketplace
+  auth: none
+  enabled: true
+  custom: true
+  note: Marketplace (FR) — Ashby board.
+# --- Teamtailor Nordic/EU scaleups — verified live 2026-06-24.
+- name: Tibber
+  tier: ats
+  region: ''
+  url: https://tibber.teamtailor.com
+  provider: teamtailor
+  slug: tibber
+  group: Platform
+  auth: none
+  enabled: true
+  custom: true
+  note: Platform (SE) — Teamtailor board.
+- name: Fortnox
+  tier: ats
+  region: ''
+  url: https://fortnoxab.teamtailor.com
+  provider: teamtailor
+  slug: fortnoxab
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (SE) — Teamtailor board.
+- name: Voi
+  tier: ats
+  region: ''
+  url: https://voitechnologyab.teamtailor.com
+  provider: teamtailor
+  slug: voitechnologyab
+  group: Marketplace
+  auth: none
+  enabled: true
+  custom: true
+  note: Marketplace (SE) — Teamtailor board.
+- name: Quinyx
+  tier: ats
+  region: ''
+  url: https://quinyx.teamtailor.com
+  provider: teamtailor
+  slug: quinyx
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (SE) — Teamtailor board.
+- name: Northmill
+  tier: ats
+  region: ''
+  url: https://northmill.teamtailor.com
+  provider: teamtailor
+  slug: northmill
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (SE) — Teamtailor board.
+- name: Brite Payments
+  tier: ats
+  region: ''
+  url: https://brite.teamtailor.com
+  provider: teamtailor
+  slug: brite
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (SE) — Teamtailor board.
+- name: Billogram
+  tier: ats
+  region: ''
+  url: https://billogram.teamtailor.com
+  provider: teamtailor
+  slug: billogram
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (SE) — Teamtailor board.
+- name: Templafy
+  tier: ats
+  region: ''
+  url: https://templafy.teamtailor.com
+  provider: teamtailor
+  slug: templafy
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (DK) — Teamtailor board.
+- name: Planhat
+  tier: ats
+  region: ''
+  url: https://planhat.teamtailor.com
+  provider: teamtailor
+  slug: planhat
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (SE) — Teamtailor board.
+- name: Storytel
+  tier: ats
+  region: ''
+  url: https://storytel.teamtailor.com
+  provider: teamtailor
+  slug: storytel
+  group: Consumer
+  auth: none
+  enabled: true
+  custom: true
+  note: Consumer (SE) — Teamtailor board.
+- name: Funnel
+  tier: ats
+  region: ''
+  url: https://funnel.teamtailor.com
+  provider: teamtailor
+  slug: funnel
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (SE) — Teamtailor board.
+- name: Hemnet
+  tier: ats
+  region: ''
+  url: https://hemnet.teamtailor.com
+  provider: teamtailor
+  slug: hemnet
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (SE) — Teamtailor board.
+- name: Qasa
+  tier: ats
+  region: ''
+  url: https://qasa.teamtailor.com
+  provider: teamtailor
+  slug: qasa
+  group: PropTech
+  auth: none
+  enabled: true
+  custom: true
+  note: PropTech (SE) — Teamtailor board.
+- name: Oneflow
+  tier: ats
+  region: ''
+  url: https://oneflow.teamtailor.com
+  provider: teamtailor
+  slug: oneflow
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (SE) — Teamtailor board.
+- name: Mynt
+  tier: ats
+  region: ''
+  url: https://mynt.teamtailor.com
+  provider: teamtailor
+  slug: mynt
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (SE) — Teamtailor board.
+- name: GetAccept
+  tier: ats
+  region: ''
+  url: https://getaccept.teamtailor.com
+  provider: teamtailor
+  slug: getaccept
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (SE) — Teamtailor board.
+- name: Normative
+  tier: ats
+  region: ''
+  url: https://normative.teamtailor.com
+  provider: teamtailor
+  slug: normative
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (SE) — Teamtailor board.
+- name: Detectify
+  tier: ats
+  region: ''
+  url: https://detectify.teamtailor.com
+  provider: teamtailor
+  slug: detectify
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (SE) — Teamtailor board.
+- name: Kivra
+  tier: ats
+  region: ''
+  url: https://kivraab.teamtailor.com
+  provider: teamtailor
+  slug: kivraab
+  group: Platform
+  auth: none
+  enabled: true
+  custom: true
+  note: Platform (SE) — Teamtailor board.
+- name: Mathem
+  tier: ats
+  region: ''
+  url: https://mathem.teamtailor.com
+  provider: teamtailor
+  slug: mathem
+  group: Marketplace
+  auth: none
+  enabled: true
+  custom: true
+  note: Marketplace (SE) — Teamtailor board.
+- name: Doconomy
+  tier: ats
+  region: ''
+  url: https://doconomy.teamtailor.com
+  provider: teamtailor
+  slug: doconomy
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (SE) — Teamtailor board.
+- name: Voyado
+  tier: ats
+  region: ''
+  url: https://voyado.teamtailor.com
+  provider: teamtailor
+  slug: voyado
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (SE) — Teamtailor board.
+- name: Sellpy
+  tier: ats
+  region: ''
+  url: https://sellpy.teamtailor.com
+  provider: teamtailor
+  slug: sellpy
+  group: Marketplace
+  auth: none
+  enabled: true
+  custom: true
+  note: Marketplace (SE) — Teamtailor board.
+- name: Schibsted
+  tier: ats
+  region: ''
+  url: https://schibsted.teamtailor.com
+  provider: teamtailor
+  slug: schibsted
+  group: Marketplace
+  auth: none
+  enabled: true
+  custom: true
+  note: Marketplace (NO/SE) — Teamtailor board.
+- name: Apotea
+  tier: ats
+  region: ''
+  url: https://apotea.teamtailor.com
+  provider: teamtailor
+  slug: apotea
+  group: Marketplace
+  auth: none
+  enabled: true
+  custom: true
+  note: Marketplace (SE) — Teamtailor board.
+- name: Hedvig
+  tier: ats
+  region: ''
+  url: https://hedvig.teamtailor.com
+  provider: teamtailor
+  slug: hedvig
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (SE) — Teamtailor board.
+- name: Apsis
+  tier: ats
+  region: ''
+  url: https://apsis.teamtailor.com
+  provider: teamtailor
+  slug: apsis
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (SE) — Teamtailor board.
+- name: Bannerflow
+  tier: ats
+  region: ''
+  url: https://bannerflow.teamtailor.com
+  provider: teamtailor
+  slug: bannerflow
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (SE) — Teamtailor board.
+- name: Qliro
+  tier: ats
+  region: ''
+  url: https://qliro.teamtailor.com
+  provider: teamtailor
+  slug: qliro
+  group: FinTech
+  auth: none
+  enabled: true
+  custom: true
+  note: FinTech (SE) — Teamtailor board.
+- name: Mediatool
+  tier: ats
+  region: ''
+  url: https://mediatool.teamtailor.com
+  provider: teamtailor
+  slug: mediatool
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (SE) — Teamtailor board.
+- name: Winningtemp
+  tier: ats
+  region: ''
+  url: https://winningtemp.teamtailor.com
+  provider: teamtailor
+  slug: winningtemp
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (SE) — Teamtailor board.
+- name: Airmee
+  tier: ats
+  region: ''
+  url: https://airmee.teamtailor.com
+  provider: teamtailor
+  slug: airmee
+  group: Marketplace
+  auth: none
+  enabled: true
+  custom: true
+  note: Marketplace (SE) — Teamtailor board.
+- name: Pinmeto
+  tier: ats
+  region: ''
+  url: https://pinmeto.teamtailor.com
+  provider: teamtailor
+  slug: pinmeto
+  group: B2B SaaS
+  auth: none
+  enabled: true
+  custom: true
+  note: B2B SaaS (SE) — Teamtailor board.
+- name: Safello
+  tier: ats
+  region: ''
+  url: https://safello.teamtailor.com
+  provider: teamtailor
+  slug: safello
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto (SE) — Teamtailor board.
+# --- Crypto / web3 (in-band or remote) — ATS boards verified live 2026-06-24.
+- name: Bitpanda
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/bitpanda
+  provider: greenhouse
+  slug: bitpanda
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (AT) — greenhouse board.
+- name: Blockchain.com
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/blockchain
+  provider: greenhouse
+  slug: blockchain
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (UK) — greenhouse board.
+- name: Copper
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/copperco
+  provider: greenhouse
+  slug: copperco
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (UK) — greenhouse board.
+- name: Consensys
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/consensys
+  provider: greenhouse
+  slug: consensys
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (remote) — greenhouse board.
+- name: Fireblocks
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/fireblocks
+  provider: greenhouse
+  slug: fireblocks
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (UK/IL) — greenhouse board.
+- name: OpenZeppelin
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/openzeppelin
+  provider: greenhouse
+  slug: openzeppelin
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (remote) — greenhouse board.
+- name: B2C2
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/b2c2
+  provider: greenhouse
+  slug: b2c2
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (UK) — greenhouse board.
+- name: 21Shares
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/21shares
+  provider: greenhouse
+  slug: 21shares
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (CH) — greenhouse board.
+- name: Status
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/thestatusnetwork
+  provider: greenhouse
+  slug: thestatusnetwork
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (remote) — greenhouse board.
+- name: Ramp Network
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/rampnetwork
+  provider: greenhouse
+  slug: rampnetwork
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (PL/UK) — greenhouse board. (no openings now — polled)
+- name: Argent
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/ready
+  provider: greenhouse
+  slug: ready
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (UK) — greenhouse board. (no openings now — polled)
+- name: Nansen
+  tier: ats
+  region: ''
+  url: https://boards.greenhouse.io/nansen
+  provider: greenhouse
+  slug: nansen
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (remote) — greenhouse board.
+- name: Wintermute
+  tier: ats
+  region: ''
+  url: https://jobs.lever.co/wintermute-trading
+  provider: lever
+  slug: wintermute-trading
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (UK) — lever board.
+- name: 1inch
+  tier: ats
+  region: ''
+  url: https://jobs.lever.co/1inch
+  provider: lever
+  slug: 1inch
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (remote) — lever board.
+- name: SwissBorg
+  tier: ats
+  region: ''
+  url: https://jobs.lever.co/swissborg
+  provider: lever
+  slug: swissborg
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (CH) — lever board.
+- name: MoonPay
+  tier: ats
+  region: ''
+  url: https://jobs.lever.co/moonpay
+  provider: lever
+  slug: moonpay
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (UK/PT) — lever board.
+- name: Crypto.com
+  tier: ats
+  region: ''
+  url: https://jobs.lever.co/crypto
+  provider: lever
+  slug: crypto
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (global) — lever board.
+- name: Ledger
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/ledger
+  provider: ashby
+  slug: ledger
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (FR) — ashby board.
+- name: Nethermind
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/nethermind
+  provider: ashby
+  slug: nethermind
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (UK) — ashby board.
+- name: Chainalysis
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/chainalysis-careers
+  provider: ashby
+  slug: chainalysis-careers
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (remote) — ashby board.
+- name: Kraken
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/kraken.com
+  provider: ashby
+  slug: kraken.com
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (remote) — ashby board.
+- name: Bitvavo
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/bitvavo
+  provider: ashby
+  slug: bitvavo
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (NL) — ashby board.
+- name: Matter Labs
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/matter-labs
+  provider: ashby
+  slug: matter-labs
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (remote) — ashby board.
+- name: Elliptic
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/elliptic
+  provider: ashby
+  slug: elliptic
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (UK) — ashby board.
+- name: TRM Labs
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/trm-labs
+  provider: ashby
+  slug: trm-labs
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (remote) — ashby board.
+- name: Sorare
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/sorare
+  provider: ashby
+  slug: sorare
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (FR) — ashby board.
+- name: Kiln
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/kiln.fi
+  provider: ashby
+  slug: kiln.fi
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (FR) — ashby board. (no openings now — polled)
+- name: Morpho
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/morpho
+  provider: ashby
+  slug: morpho
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (FR) — ashby board.
+- name: Keyrock
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/keyrock
+  provider: ashby
+  slug: keyrock
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (BE) — ashby board.
+- name: Lido
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/lido.fi
+  provider: ashby
+  slug: lido.fi
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (remote) — ashby board.
+- name: Trust Wallet
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/trust-wallet
+  provider: ashby
+  slug: trust-wallet
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (remote) — ashby board.
+- name: Flashbots
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/flashbots.net
+  provider: ashby
+  slug: flashbots.net
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (remote) — ashby board. (no openings now — polled)
+- name: Talos
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/Talos-Trading
+  provider: ashby
+  slug: Talos-Trading
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (UK/US) — ashby board.
+- name: Aztec
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/aztec-labs
+  provider: ashby
+  slug: aztec-labs
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (UK) — ashby board.
+- name: Blockstream
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/blockstream
+  provider: ashby
+  slug: blockstream
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (remote) — ashby board.
+- name: Gelato
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/gelato
+  provider: ashby
+  slug: gelato
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (DE) — ashby board.
+- name: Blockdaemon
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/blockdaemon
+  provider: ashby
+  slug: blockdaemon
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (UK/EU) — ashby board.
+- name: Dune
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/dune
+  provider: ashby
+  slug: dune
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (NO) — ashby board.
+- name: CoinTracker
+  tier: ats
+  region: ''
+  url: https://jobs.ashbyhq.com/cointracker
+  provider: ashby
+  slug: cointracker
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (remote) — ashby board.
+- name: Deblock
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/deblock
+  provider: workable
+  slug: deblock
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (FR) — workable board.
+- name: Zodia Custody
+  tier: ats
+  region: ''
+  url: https://apply.workable.com/zodia-custody
+  provider: workable
+  slug: zodia-custody
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (UK) — workable board.
+- name: Safe
+  tier: ats
+  region: ''
+  url: https://safe-labs.jobs.personio.com
+  provider: personio
+  slug: safe-labs
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (DE) — personio board.
+- name: Gnosis
+  tier: ats
+  region: ''
+  url: https://gnosis.jobs.personio.com
+  provider: personio
+  slug: gnosis
+  group: Crypto
+  auth: none
+  enabled: true
+  custom: true
+  note: Crypto/web3 (DE) — personio board.
+- name: Jack & Jill
+  tier: ats
+  region: ''
+  url: https://www.jackandjill.ai/jobs/product
+  provider: ashby
+  slug: jack-jill-external-ats
+  group: Recruiters
+  auth: none
+  enabled: true
+  custom: true
+  note: AI job-matching board (Ashby-backed) aggregating many employers' roles; the
+    real company is in the title. Role + geo gates filter to in-band product roles.

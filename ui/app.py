@@ -27,27 +27,37 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from adapters import (adzuna, ats, browser, cryptocurrencyjobs, listing,
-                      productbuilderjobs, remoteok, web3career, workingnomads)
+from adapters import (adzuna, arbeitnow, ats, browser, cryptocurrencyjobs,
+                      dynamitejobs, getro, googlejobs, himalayas, listing,
+                      productbuilderjobs, remoteok, remotive, theirstack, web3career,
+                      workingnomads)
 from engine import clchanges
 from engine import draft as draft_mod
 from engine import docxcv
 from engine import extract
 from engine import fetch as fetch_mod
-from engine import fitscore, liveness, pipeline, questions, score as score_mod, store
+from engine import boards_optimize, fitscore, liveness, pipeline, questions, score as score_mod, store
+from engine.cvbuilder import engine as cveng, render as cvrender, store as cvstore
+from engine.cvbuilder.models import ChatMessage
 from engine.models import Analysis, JDDoc, Requirement
 
 # Board id -> fetcher module (boards that support bulk preview/import).
 BOARD_FETCHERS = {
     "productbuilderjobs": productbuilderjobs,
     "remoteok": remoteok,
+    "remotive": remotive,
+    "himalayas": himalayas,
+    "arbeitnow": arbeitnow,
+    "theirstack": theirstack,
     "workingnomads": workingnomads,
     "web3career": web3career,
     "adzuna": adzuna,
     "cryptocurrencyjobs": cryptocurrencyjobs,
+    "dynamitejobs": dynamitejobs,
+    "googlejobs": googlejobs,
 }
 
-app = FastAPI(title="caddie-ai")
+app = FastAPI(title="Job Applicator")
 STATIC = Path(__file__).resolve().parent / "static"
 
 
@@ -61,7 +71,7 @@ def _startup() -> None:
 async def _no_cache(request, call_next):
     """Force revalidation of the UI/static assets so edits show up immediately."""
     resp = await call_next(request)
-    if request.url.path == "/" or request.url.path.startswith("/static"):
+    if request.url.path in ("/", "/cv-builder") or request.url.path.startswith("/static"):
         resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         resp.headers["Pragma"] = "no-cache"
         resp.headers["Expires"] = "0"
@@ -73,19 +83,202 @@ def index() -> HTMLResponse:
     return HTMLResponse((STATIC / "index.html").read_text())
 
 
+# ---- CV builder (self-contained module) ----------------------------------
+@app.get("/cv-builder", response_class=HTMLResponse)
+def cv_builder_page() -> HTMLResponse:
+    return HTMLResponse((STATIC / "cvbuilder.html").read_text())
+
+
+def _cvb_payload(session) -> dict:
+    return {"id": session.id, "step": session.step,
+            "goal": session.goal.model_dump() if session.goal else None,
+            "assessment": session.assessment.model_dump() if session.assessment else None,
+            "messages": [m.model_dump() for m in session.messages],
+            "cv": session.cv.model_dump(),
+            "cv_html": cvrender.render_html(session.cv)}
+
+
+def _cvb_get_or_404(session_id: str):
+    s = cvstore.get(session_id)
+    if not s:
+        raise HTTPException(404, "CV-builder session not found")
+    return s
+
+
+@app.post("/api/cvbuilder/session")
+def cvb_new() -> dict:
+    s = cvstore.new_session()
+    s.messages.append(ChatMessage(role="assistant", text=(
+        "Hi! I'll help you build a strong CV, step by step — no experience needed. "
+        "First, in your own words: what kind of role, course, or apprenticeship are "
+        "you hoping to apply for?")))
+    cvstore.save(s)
+    return _cvb_payload(s)
+
+
+@app.get("/api/cvbuilder/{session_id}")
+def cvb_get(session_id: str) -> dict:
+    return _cvb_payload(_cvb_get_or_404(session_id))
+
+
+class CvbGoalIn(BaseModel):
+    goal: str
+
+
+@app.post("/api/cvbuilder/{session_id}/goal")
+def cvb_goal(session_id: str, body: CvbGoalIn) -> dict:
+    s = _cvb_get_or_404(session_id)
+    if not body.goal.strip():
+        raise HTTPException(400, "Tell me what you're aiming for.")
+    s.goal = cveng.infer_goal(body.goal.strip())
+    s.step = "interview"
+    s.messages.append(ChatMessage(role="user", text=body.goal.strip()))
+    if s.imported_text:                       # assess an already-imported CV now we know the goal
+        s.assessment = cveng.assess_import(s.imported_text, s.goal)
+        s.cv = cveng.extract_cv(s)
+    s.messages.append(ChatMessage(role="assistant", text=cveng.interview_turn(s)))
+    cvstore.save(s)
+    return _cvb_payload(s)
+
+
+class CvbMessageIn(BaseModel):
+    text: str
+
+
+@app.post("/api/cvbuilder/{session_id}/message")
+def cvb_message(session_id: str, body: CvbMessageIn) -> dict:
+    s = _cvb_get_or_404(session_id)
+    if not body.text.strip():
+        raise HTTPException(400, "Empty message.")
+    s.messages.append(ChatMessage(role="user", text=body.text.strip()))
+    if not s.goal:                            # first message is their goal
+        s.goal = cveng.infer_goal(body.text.strip())
+        s.step = "interview"
+    else:
+        s.cv = cveng.extract_cv(s)            # keep the live preview current
+    s.messages.append(ChatMessage(role="assistant", text=cveng.interview_turn(s)))
+    cvstore.save(s)
+    return _cvb_payload(s)
+
+
+class CvbImportIn(BaseModel):
+    text: str = ""
+
+
+@app.post("/api/cvbuilder/{session_id}/import")
+def cvb_import(session_id: str, body: CvbImportIn) -> dict:
+    s = _cvb_get_or_404(session_id)
+    if not body.text.strip():
+        raise HTTPException(400, "Paste your CV text to import it.")
+    s.imported_text = body.text.strip()[:20000]
+    _cvb_apply_import(s)
+    cvstore.save(s)
+    return _cvb_payload(s)
+
+
+@app.post("/api/cvbuilder/{session_id}/import-file")
+async def cvb_import_file(session_id: str, file: UploadFile) -> dict:
+    s = _cvb_get_or_404(session_id)
+    try:
+        text = extract.extract_text(await file.read(), file.filename or "")
+    except extract.ExtractError as e:
+        raise HTTPException(400, str(e))
+    if not (text or "").strip():
+        raise HTTPException(400, "Couldn't read any text from that file — if it's a scan/image, paste the text instead.")
+    s.imported_text = text.strip()[:20000]
+    _cvb_apply_import(s)
+    cvstore.save(s)
+    return _cvb_payload(s)
+
+
+def _cvb_apply_import(s) -> None:
+    """Assess + prefill the CV from the imported text — works with or without a
+    goal yet (so importing first, before answering anything, still does something)."""
+    s.assessment = cveng.assess_import(s.imported_text, s.goal)
+    s.cv = cveng.extract_cv(s)
+    note = "Thanks — I've read your CV and filled in what I could on the right."
+    if not s.goal:
+        note += " Now tell me: what role, course, or apprenticeship are you aiming for?"
+    s.messages.append(ChatMessage(role="assistant", text=note))
+
+
+@app.get("/api/cvbuilder/{session_id}/skills/suggest")
+def cvb_skills_suggest(session_id: str) -> dict:
+    return {"skills": cveng.suggest_skills(_cvb_get_or_404(session_id))}
+
+
+class CvbSkillsIn(BaseModel):
+    skills: list
+
+
+@app.post("/api/cvbuilder/{session_id}/skills")
+def cvb_skills_set(session_id: str, body: CvbSkillsIn) -> dict:
+    s = _cvb_get_or_404(session_id)
+    s.cv.skills = [str(x)[:40] for x in body.skills if str(x).strip()][:30]
+    cvstore.save(s)
+    return _cvb_payload(s)
+
+
+@app.get("/api/cvbuilder/{session_id}/cv.html", response_class=HTMLResponse)
+def cvb_cv_html(session_id: str) -> HTMLResponse:
+    # editable=False -> clean print output: no placeholders/edit affordances.
+    return HTMLResponse(cvrender.render_html(_cvb_get_or_404(session_id).cv, editable=False))
+
+
+_CVB_ENTRY_SECTIONS = {"experience", "education", "projects", "volunteering"}
+_CVB_TOP_FIELDS = {"name", "headline", "email", "phone", "location", "summary"}
+_CVB_ENTRY_FIELDS = {"title", "org", "location", "start", "end", "summary"}
+
+
+class CvbFieldIn(BaseModel):
+    section: str = ""          # "" -> a top-level CV field; else an entry list
+    index: int = -1            # entry index within that section
+    field: str
+    value: str = ""
+
+
+@app.post("/api/cvbuilder/{session_id}/field")
+def cvb_field(session_id: str, body: CvbFieldIn) -> dict:
+    """Update ONE field from an inline edit on the CV preview."""
+    s = _cvb_get_or_404(session_id)
+    v = body.value.strip()[:600 if body.field in ("summary", "headline") else 300]
+    if not body.section:                       # top-level scalar (name, contact, summary)
+        if body.field in _CVB_TOP_FIELDS:
+            setattr(s.cv, body.field, v)
+    elif body.section in _CVB_ENTRY_SECTIONS:
+        lst = getattr(s.cv, body.section)
+        if 0 <= body.index < len(lst):
+            e = lst[body.index]
+            if body.field == "dates":          # one editable date field -> store verbatim
+                e.start, e.end = "", v
+            elif body.field in _CVB_ENTRY_FIELDS:
+                setattr(e, body.field, v)
+    cvstore.save(s)
+    return _cvb_payload(s)
+
+
 # ---- jobs ----------------------------------------------------------------
 @app.get("/api/jobs")
-def get_jobs(archived: bool = False) -> dict:
+def get_jobs(archived: bool = False, q: str = "") -> dict:
     base = store.base_status()
     all_jobs = store.list_jobs()
-    jobs = [j.model_dump(exclude={"description", "factors", "draft"})
-            for j in all_jobs if bool(j.archived) == archived]
+    ql = q.strip().lower()
+    if ql:
+        # search EVERYTHING — every status and archived — by role/company/title/location
+        src = [j for j in all_jobs if ql in (j.role or "").lower()
+               or ql in (j.company or "").lower() or ql in (j.title or "").lower()
+               or ql in (j.location or "").lower()]
+    else:
+        src = [j for j in all_jobs if bool(j.archived) == archived]
+    jobs = [j.model_dump(exclude={"description", "factors", "draft"}) for j in src]
     archived_count = sum(1 for j in all_jobs if j.archived)
     active = [j for j in all_jobs if not j.archived]
     FOUNDER = {"eir", "zero_to_one", "founder_welcome"}
-    untriaged = lambda j: j.status not in ("applied", "skipped")
+    untriaged = lambda j: j.status not in ("applied", "interview", "rejected", "skipped")
     counts = {
         "applied": sum(1 for j in active if j.status == "applied"),
+        "interview": sum(1 for j in active if j.status == "interview"),
+        "rejected": sum(1 for j in active if j.status == "rejected"),
         "skipped": sum(1 for j in active if j.status == "skipped"),
         "founder": sum(1 for j in active if untriaged(j) and FOUNDER.intersection(j.flags or [])),
         "voice": sum(1 for j in active if untriaged(j) and "voice_ai" in (j.flags or [])),
@@ -98,7 +291,7 @@ def get_jobs(archived: bool = False) -> dict:
         if b.get("name") and host:
             sources[b["name"]] = host
     return {"jobs": jobs, "base": base, "archived_count": archived_count,
-            "counts": counts, "sources": sources}
+            "counts": counts, "sources": sources, "search": ql}
 
 
 class PasteIn(BaseModel):
@@ -190,6 +383,7 @@ def _run_refresh(only_ids: set = None) -> None:
             ps, pg = (20, 1) if qb else (50, 2)
             res = pipeline.board_fetch(fetcher, profile, page_size=ps, pages=pg,
                                        board_id=bid, since=since)
+            theirstack.record_fetched(res["jobs"])   # advance incremental watermark (no-op for other boards)
             imp, sk, dr, st, gd = pipeline.import_raws(res["jobs"], since=since)
             imported += imp; skipped += sk; dropped += dr; stale += st; good += gd
             store.set_board_scan(bid, today)         # stamp this board's scan
@@ -197,11 +391,15 @@ def _run_refresh(only_ids: set = None) -> None:
         except Exception as e:
             _set_board(i, status="error", error=f"{type(e).__name__}: {e}"[:160])
     archived = pipeline.archive_stale(profile)
+    # Fetch full JDs for the high scorers (AI or WT >= threshold) so the geo + language
+    # gates run upfront — a thin snippet often hides a US-only / C2-language requirement.
+    enr = enrich_high_scorers(int(profile.get("jd_fetch_threshold", 70)))
+    archived += enr["archived"]
     store.set_last_fetch(today)
     with _refresh_lock:
         _refresh_state.update(running=False, done=True, totals={
             "imported": imported, "skipped": skipped, "dropped": dropped,
-            "stale": stale, "archived": archived, "good": good})
+            "stale": stale, "archived": archived, "good": good, "enriched": enr["enriched"]})
 
 
 @app.post("/api/jobs/refresh")
@@ -262,7 +460,10 @@ def job_detail(job_id: str) -> dict:
         prof_skills = {str(s).strip().lower() for s in (store.load_profile().get("skills") or [])}
         cur = {str(s).strip().lower() for s in job.analysis.skills_all}
         analysis_stale = bool(prof_skills) and cur.issubset(prof_skills)
+    # ATS optimisation is part of building the pack, not browsing the job: only
+    # surface the board tip once a draft exists (it survives reloads this way).
     return {"job": job.model_dump(), "analysis_stale": analysis_stale,
+            "board": boards_optimize.ui_tip(job.url) if job.draft else None,
             "cv_options": [{"id": c["id"], "name": c["name"]} for c in cvs]}
 
 
@@ -327,6 +528,33 @@ class DraftIn(BaseModel):
     emphasis: str = ""        # free-text: JD themes to accentuate in the letter
     angle: str = ""           # framing through-line for the whole pack (from Research)
     hooks: list = []          # research entry-points (display), persisted with the pack
+    extra_context: str = ""   # optional user-supplied notes + links to enrich the CL/answers
+    req_evidence: dict = {}   # JD requirement quote -> real metric/fact (Strengthen your match)
+    req_cl: dict = {}         # JD requirement quote -> include the bullet in the cover letter (bool)
+    req_employer: dict = {}   # JD requirement quote -> which CV employer the bullet belongs under
+
+
+_CTX_URL_RE = re.compile(r"https?://[^\s)>\]\"']+")
+
+
+def _expand_context(text: str) -> str:
+    """Candidate-supplied context: their notes verbatim, plus the extracted text of any
+    URLs they dropped in (so a linked project/article actually informs the draft)."""
+    text = (text or "").strip()
+    if not text:
+        return ""
+    parts, fetched = [text], 0
+    for url in dict.fromkeys(_CTX_URL_RE.findall(text)):
+        if fetched >= 4:                       # cap fetches per pack
+            break
+        try:
+            body = (fetch_mod.fetch(url) or {}).get("description", "")
+            if body:
+                parts.append(f"\n[Content from {url}]:\n{body[:2500]}")
+                fetched += 1
+        except Exception:
+            pass
+    return "\n".join(parts)[:6000]
 
 
 # Flags marking AI-forward / builder cultures where the cheeky opener fits.
@@ -357,16 +585,39 @@ def make_draft(job_id: str, body: Optional[DraftIn] = None) -> dict:
     real_qs = job.questions or (questions.fetch_questions(job.url) if job.url else [])
     if real_qs and not job.questions:
         job.questions = real_qs
+    # persist Strengthen-your-match state (edited bullets + cover-letter inclusion)
+    if body and body.req_evidence:
+        job.req_evidence = {**(job.req_evidence or {}),
+                            **{k: v for k, v in body.req_evidence.items() if (v or "").strip()}}
+    if body and body.req_cl:
+        job.req_cl = {**(job.req_cl or {}), **{k: bool(v) for k, v in body.req_cl.items()}}
+    if body and body.req_employer and job.jd:        # user re-assigned a bullet to a CV role
+        for r in job.jd.requirements:
+            emp = body.req_employer.get(r.quote)
+            if emp:
+                r.draft_employer = emp
+    # build the structured requirement->bullet map (text + CV employer + CL flag) for the draft
+    req_map = []
+    for r in (job.jd.requirements if job.jd else []):
+        if r.level not in ("match", "stretch"):
+            continue
+        text = (job.req_evidence or {}).get(r.quote) or r.draft_point
+        if not (text or "").strip():
+            continue
+        req_map.append({"requirement": r.quote, "point": text, "employer": r.draft_employer,
+                        "cl": bool((job.req_cl or {}).get(r.quote, False))})
     draft = draft_mod.draft_documents(
         {"role": job.role, "company": job.company, "mode": job.mode,
-         "description": job.description},
+         "description": job.description, "url": job.url},
         base_cv, store.read_base_cl(),
         app_ctx={"opener": opener,
                  "angle": body.angle if body else "",
                  "why_excited": body.why_excited if body else "",
                  "gap": body.gap if body else "",
                  "cultural_fit": body.cultural_fit if body else "",
-                 "emphasis": body.emphasis if body else ""},
+                 "emphasis": body.emphasis if body else "",
+                 "extra_context": _expand_context(body.extra_context if body else ""),
+                 "req_map": req_map},
         questions=real_qs,
         role_fit={"matched": job.drivers, "unmet": job.unmet},
     )
@@ -380,8 +631,10 @@ def make_draft(job_id: str, body: Optional[DraftIn] = None) -> dict:
                  "gap": body.gap if body else "",
                  "cultural_fit": body.cultural_fit if body else "",
                  "emphasis": body.emphasis if body else "",
+                 "extra_context": (body.extra_context if body else "") or "",
                  "hooks": (body.hooks if body and body.hooks else [])}
     job.draft = draft
+    job.archived = False        # building an application = actively pursuing it -> rescue from Archived
     store.save_job(job)
     return {"draft": draft.model_dump(),
             "opener_used": opener,
@@ -491,18 +744,50 @@ def refresh_screening(job_id: str) -> dict:
     return {"screening_html": html, "count": len(qs), "questions": [q["text"] for q in qs]}
 
 
+def _resolve_real_apply(url: str) -> str:
+    """Follow an aggregator link (e.g. an Adzuna post) to the REAL linked apply page,
+    so ATS detection + question fetching use that page — not the aggregator. Tries a
+    cheap httpx redirect, then a real browser for bot-walled aggregators (Adzuna 429s
+    httpx but a browser reaches the embedded ATS / 'apply' redirect)."""
+    if not url or boards_optimize.detect(url):     # already a recognised ATS URL
+        return url
+    import httpx
+    final = url
+    try:
+        r = httpx.get(url, follow_redirects=True, timeout=15, headers=questions.UA)
+        if r.status_code < 400:
+            final = str(r.url)
+    except Exception:
+        pass
+    if boards_optimize.detect(final):
+        return final
+    try:
+        rb = browser.resolve_apply(url)
+        if rb and boards_optimize.detect(rb):
+            return rb
+    except Exception:
+        pass
+    return final
+
+
 @app.post("/api/jobs/{job_id}/questions")
 def fetch_job_questions(job_id: str) -> dict:
-    """Fetch + persist the live ATS screening questions for this job. Run early in
-    the build so they can inform the research framing and the CV/cover-letter draft
-    (not just the screening answers)."""
+    """Resolve the REAL apply page, detect its ATS, and fetch + persist the live
+    screening questions. This reaches past the aggregator post to the linked JD, so
+    ATS optimisation is anchored on the real board — and it ALWAYS runs on Build."""
     job = store.get_job(job_id)
     if not job:
         raise HTTPException(404, "Job not found")
+    if job.url:
+        real = _resolve_real_apply(job.url)
+        if real and real != job.url:
+            job.url = real                         # persist the real linked apply URL
     qs = questions.fetch_questions(job.url) if job.url else []
     job.questions = qs
     store.save_job(job)
-    return {"questions": [q.get("text", "") for q in qs], "count": len(qs)}
+    return {"questions": [q.get("text", "") for q in qs], "count": len(qs),
+            "resolved_url": job.url,
+            "board": boards_optimize.ui_tip(job.url) if job.url else None}
 
 
 @app.post("/api/jobs/{job_id}/resolve-apply")
@@ -744,15 +1029,16 @@ def _short_tag(s: str, words: int = 6, cap: int = 42) -> str:
     return out
 
 
-@app.post("/api/jobs/{job_id}/jd")
-def make_jd(job_id: str) -> dict:
-    job = store.get_job(job_id)
-    if not job:
-        raise HTTPException(404, "Job not found")
-    # fetch the full JD from the apply URL; fall back to the stored description
+def _enrich_jd(job, profile: dict) -> dict:
+    """Fetch the full JD and re-apply the mode/location + geo + language gates,
+    persisting the job. Returns {text, archived, error}. Shared by make_jd (which then
+    classifies requirements) and the batch high-scorer enrichment, so thin aggregator
+    snippets get the full filtering treatment upfront."""
+    import httpx
+
+    from engine import language, textutils as _T
     text, err = job.description, ""
     if job.url:
-        import httpx
         try:
             resp = httpx.get(job.url, follow_redirects=True, timeout=20, headers=questions.UA)
             final = str(resp.url)
@@ -765,18 +1051,86 @@ def make_jd(job_id: str) -> dict:
             err = f"Could not fetch the JD page ({type(e).__name__}); showing stored text."
     if len(text) > len(job.description or ""):
         job.description = text            # keep the richer JD so geo/scoring see it
-    profile = store.load_profile()
-    # Now that we have the full JD, re-apply the geo gate — aggregator stubs hide a
-    # US-only role behind a 'Remote' location until the body is fetched.
-    if pipeline.geo_excluded(job.mode, job.location, profile, text) and not job.bookmarked:
+    job.jd_enriched = True
+    # Correct mode/location from the full JD — thin listings (e.g. NoDesk) mislabel a
+    # remote-US role as onsite/'Remote'. Re-detect the mode and surface the real region
+    # in the location column (esp. US, which fails the band) -> "Remote, US".
+    jd_mode = _T.detect_mode(text[:2000])
+    if jd_mode:
+        job.mode = jd_mode
+    loc = (job.location or "").strip().lower()
+    unrevealing = (not loc) or loc in ("remote", "anywhere", "worldwide", "global") or loc.startswith("remote")
+    if unrevealing and _T.looks_us_only(text):
+        job.location = "Remote, US" if job.mode == "remote" else "United States"
+    # geo gate — hide a US-only role that an aggregator stub showed as 'Remote'. But
+    # never re-archive a role the user is ALREADY archived-and-deliberately-building:
+    # if they're applying anyway, let it through.
+    if (pipeline.geo_excluded(job.mode, job.location, profile, text)
+            and not job.bookmarked and not job.archived):
         job.archived = True
         store.save_job(job)
+        return {"text": text, "archived": True, "error": err}
+    # language gate — its own axis: caps the fit score + flags separately, never
+    # folded into skills/domain. A C2 requirement aggregator snippets hide is caught here.
+    lcfg = profile.get("languages") or {}
+    la = language.assess(text, lcfg.get("spoken", ["english"]), lcfg.get("boost", []))
+    if la["blocked"]:
+        job.language_block = True
+        job.language_note = ("Requires fluent "
+                             + ", ".join(s.title() for s in la["blocking"]) + " — not spoken")
+        job.score = min(job.score, int(lcfg.get("block_score_cap", 20)))
+    elif job.language_block:                  # full JD clears a snippet false-positive
+        job.language_block, job.language_note = False, ""
+    store.save_job(job)
+    return {"text": text, "archived": False, "error": err}
+
+
+def enrich_high_scorers(threshold: int) -> dict:
+    """Fetch full JDs + apply gates for active roles scoring >= threshold on EITHER
+    scale — AI (score) or WT (weight_score). Skips already-enriched/archived roles."""
+    profile = store.load_profile()
+    out = {"enriched": 0, "archived": 0, "blocked": 0, "failed": 0}
+    for job in store.list_jobs():
+        if job.archived or job.jd_enriched or not job.url:
+            continue
+        if job.status not in ("new", "review"):
+            continue
+        if max(job.score, job.weight_score) < threshold:
+            continue
+        res = _enrich_jd(job, profile)
+        if res["archived"]:
+            out["archived"] += 1
+        elif job.language_block:
+            out["blocked"] += 1
+        elif res["error"]:
+            out["failed"] += 1
+        else:
+            out["enriched"] += 1
+    return out
+
+
+@app.post("/api/jobs/enrich")
+def enrich_jobs() -> dict:
+    """Manually run the high-scorer JD enrichment (same as runs after a scan)."""
+    threshold = int(store.load_profile().get("jd_fetch_threshold", 70))
+    return {"threshold": threshold, **enrich_high_scorers(threshold)}
+
+
+@app.post("/api/jobs/{job_id}/jd")
+def make_jd(job_id: str) -> dict:
+    job = store.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    profile = store.load_profile()
+    res = _enrich_jd(job, profile)
+    if res["archived"]:
         return {"jd": None, "geo_excluded": True,
                 "note": "This role is US/Americas-based — outside your geo gate — so it's been moved to Archived."}
-    res = fitscore.classify_requirements(text, profile, store.read_base_cv())
-    reqs = [Requirement(**r) for r in res["requirements"]]
+    text = res["text"]
+    cls = fitscore.classify_requirements(text, profile, store.read_base_cv())
+    reqs = [Requirement(**r) for r in cls["requirements"]]
     job.jd = JDDoc(text=text, url=job.url, fetched_at=fitscore._now(),
-                   error=err or res.get("error", ""),
+                   error=res["error"] or cls.get("error", ""),
                    requirements=reqs)
     # Keep the jobs-table Unmet column consistent with the JD GAP: short tags
     # built from the 'mismatch' requirements (else the scorer's tags remain).
@@ -786,6 +1140,64 @@ def make_jd(job_id: str) -> dict:
         job.unmet = gaps[:3]
     store.save_job(job)
     return {"jd": job.jd.model_dump()}
+
+
+def _cv_employers(cv_text: str) -> list:
+    """The employer/role names from the CV (### headings), for the Strengthen dropdown."""
+    out, seen = [], set()
+    for m in re.finditer(r"^###\s+(.+)$", cv_text or "", re.M):
+        name = re.split(r"\s+[—–-]\s+|\s*,\s*", m.group(1).strip())[0].strip()
+        if name and name.lower() not in seen:
+            seen.add(name.lower())
+            out.append(name)
+    return out
+
+
+def _match_employer(raw: str, employers: list) -> str:
+    """Snap an inferred employer string (e.g. 'ACME — Remote') to a CV employer."""
+    r = (raw or "").strip().upper()
+    for e in employers:
+        if r.startswith(e.upper()):
+            return e
+    return (raw or "").strip()
+
+
+@app.post("/api/jobs/{job_id}/strengthen")
+def strengthen(job_id: str) -> dict:
+    """For the match/stretch requirements, infer a CV-grounded draft point each (cached
+    on the requirement). Returns them with any saved user override, for the JD tab's
+    'Strengthen your match' section."""
+    job = store.get_job(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    reqs = [r for r in (job.jd.requirements if job.jd else []) if r.level in ("match", "stretch")]
+    missing = [r for r in reqs if not (r.draft_point or "").strip()]
+    # regenerate older mappings (made before employer-tagging) to backfill the employer
+    if not missing and reqs and not any((r.draft_employer or "").strip() for r in reqs):
+        missing = reqs
+    if missing:
+        mp = fitscore.suggest_draft_points(
+            [{"quote": r.quote, "level": r.level} for r in missing],
+            store.load_profile(), store.read_base_cv())
+        if mp:
+            for r in job.jd.requirements:
+                if r.quote in mp:
+                    r.draft_point = mp[r.quote]["point"]
+                    r.draft_employer = mp[r.quote]["employer"]
+            store.save_job(job)
+    ev, cl = job.req_evidence or {}, job.req_cl or {}
+    employers = _cv_employers(store.read_base_cv())
+    rows = []
+    for r in reqs:
+        text = ev.get(r.quote) or r.draft_point
+        quantified = bool(re.search(r"\d", text or ""))
+        # pre-select the strongest for the cover letter: clear matches with a number
+        default_cl = (r.level == "match" and quantified)
+        rows.append({"quote": r.quote, "level": r.level, "draft_point": r.draft_point,
+                     "employer": _match_employer(r.draft_employer, employers),
+                     "evidence": ev.get(r.quote, ""), "quantified": quantified,
+                     "include_cl": bool(cl.get(r.quote, default_cl))})
+    return {"requirements": rows, "employers": employers}
 
 
 class StatusIn(BaseModel):
@@ -843,12 +1255,16 @@ def learning_recap(job_id: str) -> dict:
     new_rules = [ln.strip().lstrip("-").strip()
                  for ln in after.splitlines()
                  if ln.strip().startswith("-") and _norm(ln) and _norm(ln) not in before_keys]
-    return {"entries": entries, "count": len(entries), "rules": after, "new_rules": new_rules}
+    summary = draft_mod.summarize_learnings(entries)
+    return {"summary": summary, "entries": entries, "count": len(entries),
+            "rules": after, "new_rules": new_rules}
 
 
 # The files that steer drafting + scoring, exposed read-only so the user can
 # review what conditions the agent (linked from the post-submit learning recap).
 GUIDING_FILES = {
+    "pinned":    ("Pinned rules (yours)", store.read_pinned_rules,
+                  "Authoritative drafting directives you control — followed first, never auto-overwritten."),
     "rules":     ("Drafting rules (distilled)", store.read_style_rules,
                   "Condensed guidelines + guardrails applied to every draft."),
     "edits":     ("Edit log (raw accepted edits)", store.read_style,
@@ -958,6 +1374,9 @@ def get_profile() -> dict:
                 "exclude_us_onsite_hybrid": bool(p.get("exclude_us_onsite_hybrid", True)),
                 "recency_days": int(p.get("recency_days", 7)),
                 "spoken": langs.get("spoken", []),
+                "boost": langs.get("boost", []),
+                "jd_fetch_threshold": int(p.get("jd_fetch_threshold", 70)),
+                "shortlists": p.get("shortlists", []),
             }}
 
 
@@ -1020,11 +1439,32 @@ def save_keywords(body: KeywordsIn) -> dict:
     return {"ok": True, "rescored": n}
 
 
+@app.get("/api/doctrines")
+def get_doctrines() -> dict:
+    """The editable drafting-doctrine specs (cover letter, CV summary) for Settings."""
+    return {"doctrines": [{"key": k, "label": m["label"], "text": draft_mod.doctrine_text(k)}
+                          for k, m in draft_mod.DOCTRINES.items()]}
+
+
+class DoctrineIn(BaseModel):
+    text: str = ""
+
+
+@app.post("/api/doctrines/{key}")
+def save_doctrine(key: str, body: DoctrineIn) -> dict:
+    if not draft_mod.save_doctrine_text(key, body.text):
+        raise HTTPException(404, "Unknown doctrine")
+    return {"ok": True}
+
+
 class FiltersIn(BaseModel):
     geo_gate: list = []
     exclude_us_onsite_hybrid: bool = True
     recency_days: int = 7
     spoken: list = []
+    boost: list = []
+    jd_fetch_threshold: int = 70
+    shortlists: Optional[list] = None   # None = leave unchanged
 
 
 @app.post("/api/profile/filters")
@@ -1035,7 +1475,22 @@ def save_filters(body: FiltersIn) -> dict:
     profile["recency_days"] = max(1, min(int(body.recency_days), 90))
     langs = profile.get("languages", {}) or {}
     langs["spoken"] = [s.strip().lower() for s in body.spoken if s.strip()]
+    langs["boost"] = [s.strip().lower() for s in body.boost if s.strip()]
     profile["languages"] = langs
+    profile["jd_fetch_threshold"] = max(0, min(int(body.jd_fetch_threshold), 100))
+    if body.shortlists is not None:
+        clean = []
+        for s in body.shortlists:
+            sid = str(s.get("id") or s.get("label", "")).strip().lower().replace(" ", "-")
+            label = str(s.get("label", "")).strip()
+            match = s.get("match") if s.get("match") in ("bookmarked", "flags", "keywords") else "keywords"
+            if not sid or not label:
+                continue
+            clean.append({"id": sid, "label": label, "icon": str(s.get("icon", "")).strip()[:3],
+                          "match": match,
+                          "flags": [str(x).strip() for x in (s.get("flags") or []) if str(x).strip()],
+                          "keywords": [str(x).strip() for x in (s.get("keywords") or []) if str(x).strip()]})
+        profile["shortlists"] = clean
     store.save_profile(profile)
     return {"ok": True}
 
@@ -1197,6 +1652,8 @@ def _resolve_fetcher(board_id: str):
             continue
         if b.get("provider") and b.get("slug"):
             return ats.board_fetcher(b["provider"], b["slug"])
+        if b.get("tier") == "getro" and b.get("url"):
+            return getro.board_fetcher(b["url"], b.get("name", ""))
         if b.get("tier") == "listing" and b.get("url"):
             return listing.board_fetcher(b["url"], b.get("search_template", ""),
                                          b.get("search_sep", "%20"))
@@ -1257,6 +1714,54 @@ def save_board_settings(board_id: str, body: BoardSettingsIn) -> dict:
     return {"ok": True, "page_size": hit.get("page_size"), "pages": hit.get("pages")}
 
 
+def _classify_board(url: str, name: str = None, tier: str = "") -> dict:
+    """Build a custom-board dict for `url`. tier '' auto-detects (ATS → static listing
+    → browser); pass 'ats'|'listing'|'browser' to force how it's fetched."""
+    host = urlparse(url).netloc.replace("www.", "")
+    host_name = host.split(".")[0].title() or "Custom board"
+    profile = store.load_profile()
+    queries = store.role_queries_for(profile, "default") or []
+    info = ats.parse_careers_url(url)
+
+    def _ats():
+        if not info:
+            raise HTTPException(400, "That URL isn't a recognised ATS (Greenhouse / Lever / Ashby / …).")
+        nm = name or info["slug"].replace("-", " ").replace("_", " ").title()
+        return {"name": nm, "tier": "ats", "region": "global", "url": url,
+                "provider": info["provider"], "slug": info["slug"], "auth": "none",
+                "enabled": True, "custom": True,
+                "note": f"{info['provider'].title()} board for {nm} — scans all roles, filtered to your target roles."}
+
+    def _listing():
+        t, sep = browser.make_search_template(url, queries)
+        return {"name": name or host_name, "tier": "listing", "region": "", "url": url,
+                "search_template": t, "search_sep": sep, "auth": "none",
+                "enabled": True, "custom": True,
+                "note": "Listing board — fast static fetch" + (", fans out over your role queries." if t else " of this URL.")}
+
+    def _browser():
+        t, sep = browser.make_search_template(url, queries)
+        return {"name": name or host_name, "tier": "browser", "region": "", "url": url,
+                "search_template": t, "search_sep": sep, "auth": "none",
+                "enabled": True, "custom": True,
+                "note": ("Browser tier — renders the page with Playwright (rate-limited), "
+                         + ("fans out over your role queries." if t else "scrapes this one URL.")
+                         + " Won't defeat heavy bot walls (e.g. Glassdoor).")}
+
+    tier = (tier or "").lower()
+    if tier == "ats":
+        return _ats()
+    if tier == "listing":
+        return _listing()
+    if tier == "browser":
+        return _browser()
+    if info:                       # auto: a scannable ATS company board
+        return _ats()
+    if listing.probe(url) > 0:     # auto: server-rendered static HTML (fast)
+        return _listing()
+    return _browser()              # auto: JS-rendered / bot-light
+
+
 class BoardAddIn(BaseModel):
     url: str
 
@@ -1270,35 +1775,7 @@ def add_board(body: BoardAddIn) -> dict:
         url = "https://" + url
     boards = store.load_boards()
     ids = {_board_id(b) for b in boards}
-
-    host = urlparse(url).netloc.replace("www.", "")
-    host_name = host.split(".")[0].title() or "Custom board"
-    profile = store.load_profile()
-    queries = store.role_queries_for(profile, "default") or []
-    info = ats.parse_careers_url(url)
-    if info:                                   # a scannable ATS company board
-        name = info["slug"].replace("-", " ").replace("_", " ").title()
-        board = {"name": name, "tier": "ats", "region": "global", "url": url,
-                 "provider": info["provider"], "slug": info["slug"],
-                 "auth": "none", "enabled": True, "custom": True,
-                 "note": f"{info['provider'].title()} board for {name} — scans all roles, filtered to your target roles."}
-    elif listing.probe(url) > 0:               # server-rendered static HTML (fast)
-        template, sep = browser.make_search_template(url, queries)
-        board = {"name": host_name, "tier": "listing", "region": "", "url": url,
-                 "search_template": template, "search_sep": sep,
-                 "auth": "none", "enabled": True, "custom": True,
-                 "note": "Listing board — fast static fetch"
-                         + (", fans out over your role queries." if template else " of this URL.")}
-    else:                                      # JS-rendered/bot-light -> browser tier
-        template, sep = browser.make_search_template(url, queries)
-        board = {"name": host_name, "tier": "browser", "region": "", "url": url,
-                 "search_template": template, "search_sep": sep, "auth": "none",
-                 "enabled": True, "custom": True,
-                 "note": ("Browser tier — renders the search with Playwright (rate-limited), "
-                          + ("fans out over your role queries." if template
-                             else "scrapes this one URL.")
-                          + " Won't defeat heavy bot walls (e.g. Glassdoor).")}
-
+    board = _classify_board(url)
     bid = _board_id(board)
     if bid in ids:
         raise HTTPException(409, f"A board named “{board['name']}” already exists.")
@@ -1317,6 +1794,40 @@ def delete_board(board_id: str) -> dict:
         raise HTTPException(404, "No custom board with that id (built-in boards can't be removed).")
     store.save_boards(keep)
     return {"ok": True, "removed": board_id}
+
+
+class BoardUrlIn(BaseModel):
+    url: str
+    tier: str = ""        # ""=auto-detect | ats | listing | browser
+
+
+@app.post("/api/boards/{board_id}/url")
+def update_board_url(board_id: str, body: BoardUrlIn) -> dict:
+    """Change the fetch URL (and optionally force the fetch tier) of a board you added.
+    Re-detects how to fetch it; keeps the board's name (so its id stays stable) and
+    your depth settings. Built-in boards can't be edited."""
+    url = (body.url or "").strip()
+    if not url:
+        raise HTTPException(400, "Enter a URL.")
+    if not urlparse(url).scheme:
+        url = "https://" + url
+    boards = store.load_boards()
+    i = next((k for k, b in enumerate(boards) if _board_id(b) == board_id), None)
+    if i is None:
+        raise HTTPException(404, "Board not found.")
+    if not boards[i].get("custom"):
+        raise HTTPException(400, "Only boards you added can have their URL changed.")
+    old = boards[i]
+    new = _classify_board(url, name=old.get("name"), tier=body.tier)   # keep name -> stable id
+    for k in ("page_size", "pages", "enabled", "last_scanned"):        # preserve user settings
+        if old.get(k) is not None:
+            new[k] = old[k]
+    boards[i] = new
+    store.save_boards(boards)
+    out = dict(new)
+    out["id"] = _board_id(new)
+    out["fetchable"] = new["tier"] in ("ats", "listing", "browser")
+    return {"board": out}
 
 
 @app.get("/api/role-queries")
@@ -1419,6 +1930,7 @@ def board_import(board_id: str, body: BoardFetchIn) -> dict:
                                    keyword=body.keyword, board_id=board_id, since=since)
     except Exception as e:
         raise HTTPException(502, f"Board fetch failed: {e}")
+    theirstack.record_fetched(res["jobs"])           # advance incremental watermark (no-op for other boards)
     imported, skipped, dropped, stale, good = pipeline.import_raws(res["jobs"], since=since)
     store.set_board_scan(board_id, date.today().isoformat())   # stamp this board's scan
     return {"imported": imported, "skipped": skipped, "dropped": dropped,

@@ -1,1 +1,1 @@
-"""caddie-ai engine: fetch, score, draft, storage."""
+"""Job Applicator engine: fetch, score, draft, storage."""

@@ -52,9 +52,16 @@ def distill_rules() -> bool:
     from .draft import DEFAULT_MODEL
     try:
         client = anthropic.Anthropic(api_key=api_key)
+        content = "Distil these into the rule set:\n\n" + raw[:60000]
+        pinned = store.read_pinned_bullets()
+        if pinned:
+            content += ("\n\nAUTHORITATIVE USER DIRECTIVES — the rules you output MUST be consistent "
+                        "with these; never produce a rule that contradicts them (do not re-introduce a "
+                        "preference the user has explicitly corrected):\n"
+                        + "\n".join(f"- {p}" for p in pinned))
         msg = client.messages.create(
             model=DEFAULT_MODEL, max_tokens=2000, system=DISTILL_SYSTEM,
-            messages=[{"role": "user", "content": "Distil these into the rule set:\n\n" + raw[:60000]}])
+            messages=[{"role": "user", "content": content}])
         rules = "".join(b.text for b in msg.content if b.type == "text").strip()
     except Exception:
         return False

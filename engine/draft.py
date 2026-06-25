@@ -34,6 +34,14 @@ CV rules:
   degrees, or metrics that are not in the base document.
 - Tailor wording: lead with the most relevant experience, surface the metrics the
   JD cares about, and inject role keywords naturally.
+- SKILLS SECTION: present EXACTLY 3 skill categories for every application — no more,
+  no fewer. Re-group and re-label them around what THIS job emphasises, folding the
+  base's skill groups into three single-line categories. Use only real skills from
+  the base; do not invent skills.
+- LENGTH: keep the tailored CV essentially the SAME total length as the base — same
+  character/symbol count. RE-PHRASE and re-order to surface relevance; do NOT add
+  bullets, lines, or new content. If you foreground something, tighten or cut
+  something else by roughly the same amount. The CV must never grow.
 
 COVER LETTER rules:
 The base cover letter is a fixed BACKBONE: settled prose in a proven voice, with
@@ -93,7 +101,10 @@ Marking changes (both documents):
 (If APPLICATION QUESTIONS are listed in the user message, answer EXACTLY those, in
 the same order, one per <p><strong>question</strong><br>answer</p>. For a
 multiple-choice question, state which option to select and one short reason; for a
-free-text question, answer in the candidate's voice honoring all the rules above.
+free-text question, answer it DIRECTLY and specifically in the candidate's voice. Keep
+the no-invention, specificity and banned-phrase discipline, but DO NOT apply the cover
+letter's beat structure, opener, recipient line or word budget — answer the question
+asked, plainly and completely, not a mini cover letter.
 If NO questions are provided, infer 2-4 likely screening questions including 'Why
 this company?', salary expectation and notice period.)
 @@@END@@@"""
@@ -117,7 +128,7 @@ ABOUT THIS APPLICATION (use these to fill slots; where a field is blank or says
 - Cultural / working-style fit point: {cultural_fit}
 - COVER-LETTER EMPHASIS — accentuate these themes and draw the clearest line from
   my experience to them; mirror the JD's wording on them, but never invent: {emphasis}
-{role_fit_block}
+{context_block}{evidence_block}{role_fit_block}{board_block}
 BASE CV (markdown)
 {cv}
 
@@ -125,6 +136,39 @@ BASE COVER LETTER BACKBONE (fill the [BRACKETED] slots, keep the rest)
 {cl}
 {questions_block}
 Produce the tailored documents now, in the delimiter format."""
+
+
+def _context_block(extra: str | None) -> str:
+    """Optional candidate-supplied context (free notes + fetched URL text). Shapes the
+    cover-letter hooks and screening answers, and which REAL base-CV experience to
+    foreground — never a licence to invent CV facts."""
+    extra = (extra or "").strip()
+    if not extra:
+        return ""
+    return ("- EXTRA CONTEXT FROM THE CANDIDATE (their own notes / linked material): use\n"
+            "  this to sharpen the cover-letter hooks and screening answers, and to choose\n"
+            "  which REAL base-CV experience to foreground — but NEVER invent CV facts that\n"
+            "  aren't in the base CV:\n  " + extra[:4000].replace("\n", "\n  ") + "\n")
+
+
+def _evidence_block(req_map: list | None) -> str:
+    """Candidate-approved requirement->bullet map from 'Strengthen your match': each
+    bullet goes under its named CV EMPLOYER in the experience section; items tagged
+    [COVER LETTER] also belong in the letter. Never fabricated beyond what's given."""
+    items = [m for m in (req_map or []) if (m.get("point") or "").strip()]
+    if not items:
+        return ""
+    lines = []
+    for m in items[:16]:
+        emp = (m.get("employer") or "").strip()
+        tag = " [COVER LETTER]" if m.get("cl") else ""
+        where = f" — under {emp} in the CV experience" if emp else ""
+        lines.append(f"  • REQUIREMENT: {str(m.get('requirement',''))[:180]}{tag}\n"
+                     f"    BULLET{where}: {str(m.get('point',''))[:300]}")
+    return ("- REQUIREMENT EVIDENCE the candidate approved (Strengthen your match) — work each\n"
+            "  bullet into the CV under its named employer and mirror the JD's wording; items\n"
+            "  tagged [COVER LETTER] must also appear in the letter. Never fabricate beyond this:\n"
+            + "\n".join(lines) + "\n")
 
 
 def _now() -> str:
@@ -175,6 +219,64 @@ def _fallback(base_cv: str, base_cl: str, error: str) -> Draft:
     )
 
 
+_CV_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "cv")
+# Static drafting doctrine: key -> {file, label (Settings), header (prompt)}. Editable
+# in Settings; injected into the system prompt before the learning block (which wins).
+DOCTRINES = {
+    "cover_letter": {"file": "cl-spec.md", "label": "Cover letter",
+                     "header": "COVER-LETTER DRAFTING DOCTRINE (governs the cover letter)"},
+    "cv_summary": {"file": "cv-summary-spec.md", "label": "CV summary",
+                   "header": "CV SUMMARY DRAFTING DOCTRINE (governs the CV Summary block)"},
+    "screening": {"file": "screening-spec.md", "label": "Screening answers",
+                  "header": "SCREENING-ANSWERS DRAFTING DOCTRINE (governs the @@@SCREENING@@@ answers)"},
+}
+_DOCTRINE_CACHE: dict = {}
+
+
+def doctrine_text(key: str) -> str:
+    """Current text of a doctrine file (mtime-cached). '' if the key/file is absent."""
+    meta = DOCTRINES.get(key)
+    if not meta:
+        return ""
+    path = os.path.join(_CV_DIR, meta["file"])
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return ""
+    cached = _DOCTRINE_CACHE.get(key)
+    if not cached or cached[0] != mtime:
+        try:
+            with open(path, encoding="utf-8") as f:
+                _DOCTRINE_CACHE[key] = (mtime, f.read().strip())
+        except OSError:
+            return ""
+    return _DOCTRINE_CACHE[key][1]
+
+
+def save_doctrine_text(key: str, text: str) -> bool:
+    """Overwrite a doctrine file; the mtime cache picks up the change on next read."""
+    meta = DOCTRINES.get(key)
+    if not meta:
+        return False
+    with open(os.path.join(_CV_DIR, meta["file"]), "w", encoding="utf-8") as f:
+        f.write(text or "")
+    return True
+
+
+def _doctrine_block() -> str:
+    """All drafting doctrines, headed and concatenated, for the static system prompt."""
+    parts = []
+    for key, meta in DOCTRINES.items():
+        t = doctrine_text(key)
+        if t:
+            parts.append(f"=== {meta['header']}. SCOPE: this doctrine applies ONLY to the "
+                         f"document it names — do NOT impose its structure, beats, openers, "
+                         f"word budgets or format on the other documents (especially not on "
+                         f"the screening answers). The learning rules below override it on any "
+                         f"conflict ===\n{t}")
+    return "\n\n".join(parts)
+
+
 def _learning_block(strengths: bool = True) -> str:
     """Assembled learning context: distilled rules + per-application balanced examples
     + freshest raw edits (+ strengths). No single company dominates.
@@ -187,6 +289,10 @@ def _learning_block(strengths: bool = True) -> str:
     except Exception:
         pass                              # never let a distill hiccup block drafting
     parts = []
+    pinned = store.read_pinned_bullets()
+    if pinned:
+        parts.append("PINNED RULES — authoritative, follow these FIRST; they override anything below:\n"
+                     + "\n".join(f"- {p}" for p in pinned))
     rules = store.read_style_rules().strip()
     if rules:
         parts.append("LEARNED RULES — follow strictly (distilled from the user's edits):\n" + rules)
@@ -357,6 +463,42 @@ def infer_rationale(instruction: str, before: str = "", after: str = "") -> str:
         msg = client.messages.create(model=DEFAULT_MODEL, max_tokens=120, system=system,
                                      messages=[{"role": "user", "content": user}])
         return "".join(b.text for b in msg.content if b.type == "text").strip().strip('"')
+    except Exception:
+        return ""
+
+
+def summarize_learnings(entries: list) -> str:
+    """One short plain-language summary of what a set of accepted edits (each
+    {suggested, changed, reason}) taught the drafter — the through-line, not a recital.
+    Returns '' when there's nothing to summarise or no API key."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    rows = []
+    for e in (entries or [])[:12]:
+        r = (e.get("reason") or "").strip()
+        b = (e.get("suggested") or "").strip()
+        a = (e.get("changed") or "").strip()
+        if r or (b and a):
+            rows.append(f"- reason: {r}\n  before: {b[:200]}\n  after: {a[:200]}")
+    if not rows:
+        return ""
+    if not api_key:
+        # fallback: just stitch the reasons together
+        reasons = [str(e.get("reason") or "").strip() for e in entries if (e.get("reason") or "").strip()]
+        return ("You steered the draft: " + "; ".join(reasons[:3]) + ".") if reasons else ""
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        system = (
+            "You summarise what a user's edits to ONE job application taught their AI drafting "
+            "assistant. In 1-2 short sentences, state the through-line — the consistent writing "
+            "preference behind the edits — in plain second person ('You want drafts to ...'). "
+            "Generalise; do NOT quote the raw passages back or list each edit. British spelling, "
+            "no em-dashes. Output only the summary.")
+        msg = client.messages.create(model=DEFAULT_MODEL, max_tokens=180, system=system,
+                                     messages=[{"role": "user",
+                                                "content": "Edits:\n" + "\n".join(rows)
+                                                + "\n\nSummarise what this taught."}])
+        return "".join(b.text for b in msg.content if b.type == "text").strip()[:500]
     except Exception:
         return ""
 
@@ -540,25 +682,41 @@ def draft_documents(job_dict: dict, base_cv: str, base_cl: str,
                                "it with the closest true experience. Never hide or fake it.\n")
     else:
         role_fit_block = ""
+    # Tune the pack to how this employer's ATS screens (Greenhouse/Lever/Ashby).
+    from . import boards_optimize
+    bd = boards_optimize.drafting_directives(job_dict.get("url", ""))
+    board_block = ("\nATS OPTIMISATION — tune the CV, cover letter and screening "
+                   "answers to how this employer screens (never fabricate to fit):\n"
+                   + bd + "\n") if bd else ""
     user = USER_TMPL.format(
         role=job_dict.get("role", ""),
         company=job_dict.get("company", ""),
         mode=job_dict.get("mode", ""),
         jd=(job_dict.get("description", "") or "")[:MAX_JD_CHARS],
         opener=opener,
+        board_block=board_block,
         angle=(ctx.get("angle") or "").strip() or "(not supplied)",
         why_excited=(ctx.get("why_excited") or "").strip() or "(not supplied)",
         gap=(ctx.get("gap") or "").strip() or "(not supplied)",
         cultural_fit=(ctx.get("cultural_fit") or "").strip() or "(not supplied)",
         emphasis=(ctx.get("emphasis") or "").strip() or "(none — balance the JD naturally)",
+        context_block=_context_block(ctx.get("extra_context")),
+        evidence_block=_evidence_block(ctx.get("req_map")),
         cv=base_cv,
         cl=base_cl,
         questions_block=questions_block,
         role_fit_block=role_fit_block,
     )
     # fold in learned preferences from the user's past manual edits
+    # Load order (per the specs' §7): base SYSTEM -> drafting doctrines -> learning block
+    # (the personalised override, wins on conflicts). The static prefix (rules + doctrines)
+    # is prompt-CACHED; only the learning block (which changes as edits accrue) is uncached.
+    spec = _doctrine_block()
     lb = _learning_block(strengths=True)
-    system = SYSTEM + ("\n\n" + lb if lb else "")
+    static_system = SYSTEM + (("\n\n" + spec) if spec else "")
+    system = [{"type": "text", "text": static_system, "cache_control": {"type": "ephemeral"}}]
+    if lb:
+        system.append({"type": "text", "text": lb})
     try:
         client = anthropic.Anthropic(api_key=api_key)
         msg = client.messages.create(

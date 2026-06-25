@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import uuid
 from datetime import date
 from pathlib import Path
@@ -277,6 +278,36 @@ def write_style_rules(text: str) -> None:
     STYLE_RULES_PATH.write_text(text)
 
 
+# ---- style-pinned.md: user-authored drafting directives that are AUTHORITATIVE and
+#      never auto-overwritten (the distiller regenerates style-rules.md, not this) ----
+PINNED_PATH = DATA / "style-pinned.md"
+
+
+def read_pinned_rules() -> str:
+    return PINNED_PATH.read_text() if PINNED_PATH.exists() else ""
+
+
+def read_pinned_bullets() -> list:
+    """Just the rule lines (drop the file header/comment)."""
+    return [ln.strip()[1:].strip() for ln in read_pinned_rules().splitlines()
+            if ln.strip().startswith("- ")]
+
+
+def append_pinned_rule(text: str) -> None:
+    """Add a durable, authoritative drafting rule (e.g. a correction to a mis-learned
+    preference). Survives re-distillation; the drafter follows it first."""
+    if not (text or "").strip():
+        return
+    ensure_dirs()
+    if not PINNED_PATH.exists():
+        PINNED_PATH.write_text(
+            "# Pinned drafting rules (yours — authoritative, never auto-overwritten)\n\n"
+            "Hand-edit freely. These take priority over the auto-distilled rules and "
+            "constrain what the distiller may infer.\n")
+    with PINNED_PATH.open("a") as f:
+        f.write(f"- {text.strip()}\n")
+
+
 def write_style_examples(text: str) -> None:
     ensure_dirs()
     STYLE_EXAMPLES_PATH.write_text(text)
@@ -434,7 +465,12 @@ def _job_path(job_id: str) -> Path:
 
 def save_job(job: Job) -> None:
     ensure_dirs()
-    _job_path(job.id).write_text(job.model_dump_json(indent=2))
+    # atomic write: a concurrent reader never sees a half-written (invalid) file —
+    # it gets the old complete file or the new one, never a partial truncated one.
+    p = _job_path(job.id)
+    tmp = p.parent / (p.name + ".tmp")
+    tmp.write_text(job.model_dump_json(indent=2))
+    os.replace(tmp, p)
     rewrite_csv()
 
 
@@ -454,7 +490,14 @@ def get_job(job_id: str) -> Optional[Job]:
 
 def list_jobs() -> List[Job]:
     ensure_dirs()
-    jobs = [Job.model_validate_json(p.read_text()) for p in JOBS_DIR.glob("*.json")]
+    # resilient: skip a transiently-partial or corrupt file rather than 500 the WHOLE
+    # list (one bad file used to make the entire app look down).
+    jobs = []
+    for p in JOBS_DIR.glob("*.json"):
+        try:
+            jobs.append(Job.model_validate_json(p.read_text()))
+        except Exception:
+            continue
     # rank by score desc, then most recent date
     jobs.sort(key=lambda j: (j.score, j.date), reverse=True)
     return jobs

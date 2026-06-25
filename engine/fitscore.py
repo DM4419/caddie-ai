@@ -22,16 +22,23 @@ load_dotenv()
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
-MODEL = os.environ.get("FIT_MODEL", "claude-haiku-4-5")
+MODEL = os.environ.get("FIT_MODEL", "claude-sonnet-4-6")
 BATCH = 10
-JD_CHARS = 600
-CV_CHARS = 3000
+# Feed the JD in full so the scorer has real signal to discriminate on (a 600-char
+# cap left it hedging to a "decent but unsure" ~72 for content-rich roles). 6000
+# covers ~95% of postings whole; the ceiling only bounds the rare 10k+ outlier so
+# one giant JD can't swamp the rest of its batch.
+JD_CHARS = 6000
+# Must fit the WHOLE base CV — earlier/again-relevant roles often live near the
+# bottom. Truncating here makes the scorer hallucinate "no X experience" gaps for
+# domains the CV actually covers further down.
+CV_CHARS = 12000
 
 DEFAULT_RUBRIC = ("Weigh qualifications/CV match first (biggest factor), then the company's "
                   "operating style (prefers early-stage, founder-led, hands-on 0→1), then domain "
                   "fit. Do NOT factor in location or remoteness — that is a separate hard gate.")
 
-# Location / work-mode are handled by the geo gate + the remote score, NOT listed as
+# Location / work-mode are handled by the geo gate + the location filter, NOT listed as
 # "unmet qualifications" — so they're filtered out of every unmet/gap list.
 _LOC_RE = re.compile(r"on-?site|hybrid|\bremote\b|relocat|in[- ]?office|commut|based in|"
                      r"located in|\blocation\b|time ?zone", re.I)
@@ -92,7 +99,7 @@ does NOT meet (e.g. "10y B2B SaaS", "fintech domain", "manages 20+ reports").
 These must be the JOB's demands the candidate falls short on — NOT the
 candidate's own skills, and NOT strengths of theirs the JD omits. NEVER list
 location, work mode, geography, or relocation/visa as unmet — geography is
-handled by the geo gate and the remote score, not here.
+handled by the geo gate and the location filter, not here.
 Empty [] if the candidate plausibly meets the stated requirements.
 "location": the job's location or region if stated OR reasonably inferable from
 the text (e.g. "Remote", "Remote — US", "London, UK", "EMEA", "Berlin"). Empty ""
@@ -125,9 +132,13 @@ def _analysis_system(profile: dict) -> str:
 
 ANALYSIS_FORMAT = """Return ONLY a JSON object:
 {"score_rationale":"1-2 sentences explaining why the assigned fit score is what it
-   is — the main things that lifted it and the main things that held it back",
+   is — the main things that lifted it and the main things that held it back. NEVER
+   cite location, work-mode, onsite/remote, commute, or geography as something that
+   lifted or held back the score — that is a separate hard gate, not part of fit",
  "best_fit":"2-4 sentences: where this role fits the candidate well and why",
- "shortcomings":"2-4 sentences: where it's a weak fit, risks, or gaps, and why",
+ "shortcomings":"2-4 sentences: where it's a weak fit, risks, or gaps, and why. Do
+   NOT mention location, work-mode, onsite/remote, commute, or geography here —
+   geography is handled by the location filter, not fit",
  "skills_required":["<a concrete skill / competency / tool the JD explicitly asks
    for or clearly values — a SHORT tag (<= 4 words), taken from THIS job's
    description. 8-16 items. These are the ROLE's requirements scraped from the JD,
@@ -154,7 +165,8 @@ only the ones the CV does not satisfy. Do NOT list the candidate's own preferenc
 strengths the JD merely omits, company/comp gripes, or LOCATION / work-mode /
 geography (NOT "onsite in London", NOT "hybrid not remote", NOT "comp below market",
 NOT "no evidence they value founders"). Geography is handled separately by the geo
-gate + remote score. [] if the candidate plausibly meets everything.
+gate + location filter, and must NOT appear in score_rationale, best_fit, or
+shortcomings either. [] if the candidate plausibly meets everything.
 "breakdown": score the candidate's TRUE standing on each dimension 0-100, judged
 semantically from their CV + summary (NOT literal keyword matching) — e.g. a deep
 0→1 AI builder scores high on Qualifications even if the JD never uses those words."""
@@ -280,6 +292,54 @@ def classify_requirements(jd_text: str, profile: dict, cv_text: str) -> dict:
     except Exception as e:
         out["error"] = f"Requirement assessment failed: {type(e).__name__}: {e}"
     return out
+
+
+DRAFT_POINT_SYSTEM = """For each JD requirement, write ONE concise CV-grounded bullet
+(<= 28 words) showing how THIS candidate evidences or approaches it, AND name the single
+CV employer/role the evidence draws from (verbatim company/employer name as it appears in
+the CV; '' if none). Use REAL experience and any real metric already in the CV, prefer a
+quantified bullet, and mirror the JD's wording. If the CV has nothing concrete, give a
+short honest angle — NEVER invent facts, numbers, employers, or titles not in the CV.
+Return ONLY JSON: {"mappings":[{"point":"<bullet>","employer":"<CV employer or ''>"}, ...]}
+— one entry per requirement, IN THE SAME ORDER as given."""
+
+
+def suggest_draft_points(requirements: list, profile: dict, cv_text: str) -> dict:
+    """{requirement quote -> {point, employer}} for the given requirements. One LLM
+    call; returns {} on any failure (caller leaves the inputs blank)."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    reqs = [r for r in (requirements or []) if (r.get("quote") or "").strip()]
+    if not api_key or not reqs:
+        return {}
+    qlist = "\n".join(f"{i + 1}. [{r.get('level', 'stretch')}] {r['quote']}"
+                      for i, r in enumerate(reqs))
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model=MODEL, max_tokens=2000,
+            system=[
+                {"type": "text", "text": DRAFT_POINT_SYSTEM},
+                {"type": "text", "text": _profile_blob(profile, cv_text),
+                 "cache_control": {"type": "ephemeral"}},
+            ],
+            messages=[{"role": "user",
+                       "content": f"REQUIREMENTS:\n{qlist}\n\nWrite the bullets now."}],
+        )
+        raw = "".join(b.text for b in msg.content if b.type == "text").strip()
+        s, e = raw.find("{"), raw.rfind("}")
+        maps = json.loads(raw[s:e + 1] if s != -1 else raw).get("mappings") or []
+        out = {}
+        for i, m in enumerate(maps):
+            if i >= len(reqs):
+                break
+            pt = str((m or {}).get("point", "")).strip()
+            if pt:
+                out[reqs[i]["quote"]] = {"point": pt[:300],
+                                         "employer": str((m or {}).get("employer", "")).strip()[:60]}
+        return out
+    except Exception:
+        return {}
 
 
 def score_batch(raws: list, profile: dict, cv_text: str):

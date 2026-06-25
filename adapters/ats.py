@@ -20,7 +20,7 @@ from engine.textutils import (UA, detect_mode, detect_role, normalize_mode,
 
 TIMEOUT = 20.0
 PROVIDERS = ("greenhouse", "lever", "ashby", "recruitee", "smartrecruiters",
-             "workable", "personio")
+             "workable", "personio", "teamtailor")
 
 
 def _get(url: str, **kw) -> httpx.Response:
@@ -46,7 +46,7 @@ _SLUG_RES = {
 _SUBDOMAIN_HOSTS = {
     "recruitee.com": "recruitee",
     "jobs.personio.com": "personio", "jobs.personio.de": "personio",
-    "workable.com": "workable",
+    "workable.com": "workable", "teamtailor.com": "teamtailor",
 }
 _GH_FOR_RE = re.compile(r"greenhouse\.io/embed/job_board\?for=([a-z0-9_-]+)", re.I)
 
@@ -240,9 +240,41 @@ def _list_personio(slug: str) -> list:
     raise (last or ValueError("personio board not found"))
 
 
+# ---- Teamtailor (public jobs RSS feed) -----------------------------------
+def _list_teamtailor(slug: str) -> list:
+    """Parse a Teamtailor career site's public RSS (<slug>.teamtailor.com/jobs.rss).
+    Items carry title, description (HTML), link, remoteStatus, company_name, pubDate."""
+    import xml.etree.ElementTree as ET
+    from email.utils import parsedate_to_datetime
+    root = ET.fromstring(_get(f"https://{slug}.teamtailor.com/jobs.rss").content)
+    default_company = _slug_company(slug)
+    out = []
+    for it in root.findall(".//item"):
+        def _t(tag: str) -> str:
+            e = it.find(tag)
+            return (e.text or "").strip() if e is not None and e.text else ""
+        title = _t("title")
+        if not title:
+            continue
+        company = _t("company_name") or default_company
+        loc = _t("locations")
+        body = strip_html(_t("description"))
+        posted = ""
+        if _t("pubDate"):
+            try:
+                posted = parsedate_to_datetime(_t("pubDate")).date().isoformat()
+            except (ValueError, TypeError):
+                posted = ""
+        mode = normalize_mode(_t("remoteStatus").replace("_", " "), f"{loc}\n{body}")
+        out.append(_raw(title, company, _t("link"), loc, mode,
+                        f"{title}\n{loc}\n\n{body}", posted))
+    return out
+
+
 _LISTERS = {"greenhouse": _list_greenhouse, "lever": _list_lever, "ashby": _list_ashby,
             "recruitee": _list_recruitee, "smartrecruiters": _list_smartrecruiters,
-            "workable": _list_workable, "personio": _list_personio}
+            "workable": _list_workable, "personio": _list_personio,
+            "teamtailor": _list_teamtailor}
 
 
 def list_board(provider: str, slug: str) -> list:

@@ -30,7 +30,8 @@ class ScoreResult(BaseModel):
 class Job(BaseModel):
     id: str
     date: str                       # YYYY-MM-DD added
-    role: str
+    role: str                       # canonical role (detect_role of the title)
+    title: str = ""                 # original posting title — used for dedup (more specific than role)
     company: str
     url: str = ""
     mode: str = "remote"            # remote | hybrid | onsite
@@ -38,9 +39,10 @@ class Job(BaseModel):
     salary: str = ""                # formatted salary range, if known
     posted: str = ""                # posting date YYYY-MM-DD, if known
     description: str = ""
-    status: str = "new"             # new | review | approved | applied | skipped
+    status: str = "new"             # new | review | approved | applied | interview | rejected | skipped
     bookmarked: bool = False        # user-pinned; never auto-archived
     archived: bool = False          # aged out past the recency window
+    jd_enriched: bool = False       # full JD fetched + geo/language gates re-applied
     score: int = 0                  # primary AI fit score (LLM); keyword fallback
     weight_score: int = 0           # secondary: weighted keyword factors total
     reason: str = ""
@@ -60,6 +62,8 @@ class Job(BaseModel):
     analysis: Optional["Analysis"] = None
     jd: Optional["JDDoc"] = None
     questions: List[dict] = Field(default_factory=list)  # fetched ATS screening questions
+    req_evidence: dict = Field(default_factory=dict)     # JD requirement quote -> user's real metric/fact
+    req_cl: dict = Field(default_factory=dict)           # JD requirement quote -> include in cover letter (bool)
     draft: Optional["Draft"] = None
 
 
@@ -67,6 +71,8 @@ class Requirement(BaseModel):
     quote: str = ""                 # verbatim phrase from the JD
     level: str = "stretch"          # match | stretch | mismatch
     note: str = ""
+    draft_point: str = ""           # CV-inferred bullet evidencing this requirement (Strengthen)
+    draft_employer: str = ""        # which CV employer/role the bullet draws from (CV placement)
 
 
 class JDDoc(BaseModel):

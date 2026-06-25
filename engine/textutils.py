@@ -166,6 +166,63 @@ def looks_us_only(text: str) -> bool:
     return not bool(_ALLOWED_REGION_RE.search(head))
 
 
+# --- coarse UTC-offset classifier, for the timezone gate ----------------------
+# Standard (non-DST) offsets by region keyword; ordered most-specific first so an
+# in-band Gulf/Caucasus city isn't swallowed by a broad Asia pattern. Enough
+# granularity to keep/drop by a collaboration band (e.g. CET-1..CET+4 = UTC 0..5).
+_TZ_BUCKETS = [
+    (re.compile(r"\b(bangladesh|dhaka|thailand|bangkok|vietnam|hanoi|ho chi minh|"
+                r"indonesia|jakarta|china|shanghai|shenzhen|beijing|guangzhou|"
+                r"singapore|hong kong|malaysia|kuala lumpur|philippines|manila|"
+                r"taiwan|taipei|japan|tokyo|osaka|korea|seoul|"
+                r"australia|sydney|melbourne|brisbane|perth|new zealand|auckland)\b", re.I), 8.0),
+    (re.compile(r"\b(india|bengaluru|bangalore|mumbai|new delhi|delhi|hyderabad|pune|"
+                r"chennai|gurgaon|gurugram|noida|kolkata|sri lanka|colombo)\b", re.I), 5.5),
+    (re.compile(r"\b(pakistan|karachi|lahore|islamabad|uzbekistan|tashkent|maldives|"
+                r"turkmenistan|ashgabat)\b", re.I), 5.0),
+    (re.compile(r"\b(uae|u\.a\.e\.|dubai|abu dhabi|sharjah|\boman\b|muscat|armenia|yerevan|"
+                r"georgia|tbilisi|azerbaijan|baku|mauritius|réunion|reunion)\b", re.I), 4.0),
+    (re.compile(r"\b(turkey|türkiye|istanbul|ankara|moscow|saudi|riyadh|jeddah|qatar|doha|"
+                r"kuwait|bahrain|manama|iraq|baghdad|kenya|nairobi|ethiopia|addis|"
+                r"tanzania|dar es salaam|uganda|kampala)\b", re.I), 3.0),
+    (re.compile(r"\b(finland|helsinki|greece|athens|romania|bucharest|bulgaria|sofia|"
+                r"ukraine|kyiv|kiev|estonia|tallinn|latvia|riga|lithuania|vilnius|"
+                r"cyprus|moldova|chisinau|israel|tel aviv|jerusalem|egypt|cairo|"
+                r"south africa|johannesburg|cape town|pretoria|durban)\b", re.I), 2.0),
+    # Catch-all for recognised UK / Western+Central Europe / West+Central Africa / Morocco.
+    (re.compile(r"\b(uk|united kingdom|britain|england|london|manchester|scotland|wales|"
+                r"ireland|dublin|portugal|lisbon|porto|iceland|reykjavik|morocco|"
+                r"spain|madrid|barcelona|france|paris|germany|berlin|munich|hamburg|"
+                r"italy|rome|milan|netherlands|amsterdam|belgium|brussels|luxembourg|"
+                r"switzerland|zurich|geneva|austria|vienna|poland|warsaw|krakow|"
+                r"czech|prague|slovakia|hungary|budapest|slovenia|ljubljana|croatia|zagreb|"
+                r"serbia|belgrade|sweden|stockholm|norway|oslo|denmark|copenhagen|malta|"
+                r"nigeria|lagos|ghana|accra|algeria|tunisia|emea|europe|european|\beu\b)\b", re.I), 1.0),
+]
+
+
+def region_utc_offsets(location: str) -> list:
+    """All standard UTC offsets (hours) implied by a location string — a multi-region
+    remote role (e.g. 'EMEA | LatAm') yields several. Empty if no region is named.
+    Americas/US -> -5. Callers keep a role if ANY offset lands in their band."""
+    s = location or ""
+    if not s.strip():
+        return []
+    offs = []
+    if is_us(s) or is_americas(s):
+        offs.append(-5.0)
+    for rx, off in _TZ_BUCKETS:
+        if rx.search(s):
+            offs.append(off)
+    return offs
+
+
+def region_utc_offset(location: str):
+    """Single representative offset (the one nearest UTC+1/CET among matches), or None."""
+    offs = region_utc_offsets(location)
+    return min(offs, key=lambda o: abs(o - 1.0)) if offs else None
+
+
 def fmt_salary(mn, mx, currency: str = "", predicted: bool = False) -> str:
     """Format a min/max salary into a compact range like '£140k–165k' (or '')."""
     def k(v):

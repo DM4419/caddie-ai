@@ -18,15 +18,17 @@ from typing import Dict, List
 
 # Canonical language -> word-boundary regex of its names (incl. endonyms).
 _TERMS: Dict[str, re.Pattern] = {
-    "english": re.compile(r"\benglish\b", re.I),
-    "russian": re.compile(r"\brussian\b|\bрусск", re.I),
-    "german": re.compile(r"\bgerman\b|\bdeutsch\b", re.I),
-    "dutch": re.compile(r"\bdutch\b|\bnederlands\b", re.I),
-    "french": re.compile(r"\bfrench\b|\bfran[çc]ais\b", re.I),
-    "spanish": re.compile(r"\bspanish\b|\bespa[ñn]ol\b|\bcastellano\b", re.I),
-    "italian": re.compile(r"\bitalian\b|\bitaliano\b", re.I),
-    "portuguese": re.compile(r"\bportuguese\b|\bportugu[êe]s\b", re.I),
-    "polish": re.compile(r"\bpolish\b|\bpolski\b", re.I),
+    # endonyms + German-style compounds (Deutschkenntnisse, Englischsprachig…); \w*
+    # tails catch the compound, with lookaheads to avoid the country name (Deutschland).
+    "english": re.compile(r"\benglish\b|\benglisch\w*", re.I),
+    "russian": re.compile(r"\brussian\b|\bрусск|\brussisch\w*", re.I),
+    "german": re.compile(r"\bgerman\b|\bdeutsch(?!land)\w*", re.I),
+    "dutch": re.compile(r"\bdutch\b|\bnederlands\w*|\bniederländisch\w*", re.I),
+    "french": re.compile(r"\bfrench\b|\bfran[çc]ais\w*|\bfranzösisch\w*", re.I),
+    "spanish": re.compile(r"\bspanish\b|\bespa[ñn]ol\w*|\bcastellano|\bspanisch\w*", re.I),
+    "italian": re.compile(r"\bitalian\b|\bitaliano\w*|\bitalienisch\w*", re.I),
+    "portuguese": re.compile(r"\bportuguese\b|\bportugu[êe]s\w*", re.I),
+    "polish": re.compile(r"\bpolish\b|\bpolski\w*|\bpolnisch\w*", re.I),
     "swedish": re.compile(r"\bswedish\b|\bsvenska\b", re.I),
     "danish": re.compile(r"\bdanish\b", re.I),
     "norwegian": re.compile(r"\bnorwegian\b", re.I),
@@ -46,7 +48,8 @@ _TERMS: Dict[str, re.Pattern] = {
 
 _REQ_CUE = re.compile(
     r"\b(native|mother[\s-]?tongue|fluent|fluency|fluently|c1|c2|"
-    r"proficien\w*|native[\s-]?level|native speaker|business[\s-]?fluent)\b", re.I)
+    r"proficien\w*|native[\s-]?level|native speaker|business[\s-]?fluent|"
+    r"fließend\w*|fliessend\w*|verhandlungssicher\w*|muttersprach\w*)\b", re.I)
 
 _OPT_CUE = re.compile(
     r"(a plus|plus point|nice[\s-]to[\s-]have|desirable|preferred|preferable|"
@@ -85,7 +88,11 @@ def assess(text: str, spoken: List[str], boost: List[str]) -> dict:
         if has_req and not is_opt:
             nonspoken = langs - spoken_set
             spoken_here = langs & spoken_set
-            if nonspoken and not spoken_here:   # nothing you speak satisfies it
+            # a spoken language only SATISFIES the requirement when it's an explicit
+            # alternative ("English or German" / "Englisch oder Deutsch"); "and"/"und"
+            # or a comma means both are required, so a non-spoken one still blocks.
+            alt = bool(re.search(r"\b(or|oder)\b|/", seg, re.I))
+            if nonspoken and not (spoken_here and alt):
                 blocking |= nonspoken
 
     blocking -= spoken_set                       # never block on a spoken language

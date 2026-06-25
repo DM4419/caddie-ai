@@ -2,52 +2,27 @@
   <img src="assets/logo.svg" alt="Caddie AI" width="380">
 </p>
 
-<p align="center"><em>An open-source co-pilot for your job search — it scores roles against your CV, drafts tailored applications, shortlists people to reach out to, and learns from your edits. Runs entirely on your machine.</em></p>
+<p align="center"><em>An open-source co-pilot for your job search — it scores roles against your CV, drafts tailored applications, helps you build a CV from scratch, and learns from your edits. Runs entirely on your machine.</em></p>
 
 ---
 
 # caddie-ai
 
-An open-source tool I built for my own job search, then tidied up to share with friends
-going through the same thing.
-
 Applying to a lot of roles gets repetitive: read the posting, decide if it's worth it, then
-retailor your CV and cover letter. caddie-ai takes the first pass at that. It scans job
-boards, scores how well each role fits your CV, and drafts a tailored CV, cover letter, and
-screening answers. You review, edit, and send everything yourself — it never submits anything
-on its own.
+retailor your CV and cover letter. caddie-ai takes the first pass — it scans job boards, scores
+how well each role fits your CV, and drafts a tailored CV, cover letter, and screening answers.
+You review, edit, and send everything yourself; **it never submits anything on its own.**
 
-It runs entirely on your own machine, and it learns from the edits you make, so over time its
-drafts land a little closer to your voice.
+It runs entirely on your machine, and it **learns from the edits you make**, so over time its
+drafts land closer to your voice.
 
-> The name: like a golf caddie, it reads the course and hands you the right club. You still
-> take every swing.
+> The name: like a golf caddie, it reads the course and hands you the right club. You still take
+> every swing.
 
----
+## What it does
 
-## Contents
-
-- [Why](#why) · [The system at a glance](#the-system-at-a-glance) · [Screenshots](#screenshots)
-- [The learning loop](#the-learning-loop-the-system-improves-every-time-you-edit) — the part that compounds
-- [How fit is evaluated (JD ↔ your CV)](#how-fit-is-evaluated-jd--your-cv)
-- [How it sources jobs](#how-it-sources-jobs) · [How drafting works](#how-drafting-works)
-- [Architecture](#architecture) · [Setup](#setup) · [Settings reference](#settings-reference)
-- [Safety & privacy](#safety--privacy-by-design) · [Roadmap](#roadmap) · [Tech stack](#tech-stack)
-
-## Why
-
-Applying well is slow: read the JD, judge whether it's worth your time, then rewrite your
-CV and cover letter to match — for every single role. caddie-ai automates the *judgement
-and the first draft*, where an LLM genuinely helps, and keeps the human firmly in the loop
-for everything that carries risk (what you send, where you send it).
-
-It runs entirely on your machine. Your CV, your application history, and your API key never
-leave it.
-
-## The system at a glance
-
-caddie-ai is a **closed loop**, not a one-shot generator. Each stage feeds the next, and
-the output of your own judgement is captured and fed back in:
+A **closed loop**, not a one-shot generator — each stage feeds the next, and your own judgement
+is captured and fed back in:
 
 ```
    ┌─────────── you skip / accept / edit / apply ───────────┐
@@ -57,377 +32,69 @@ the output of your own judgement is captured and fed back in:
 │ SOURCE │─►│ SCORE  │─►│   BUILD APPLICATION PACK      │─►│ REVIEW & SUBMIT │
 │ tiered │  │ fit vs │  │ JD fit → screening questions  │  │ (you, manually) │
 │ boards │  │ your CV│  │ → research → CV / CL / answers │  └───────┬────────┘
-└────────┘  └───┬────┘  └───────────────▲──────────────┘          │
-                │ matched /              │ learned rules,           │
-                │ unmet reqs            │ examples, anchors         │
-                ▼                       │                           ▼
-          ┌─────────────────────────────┴────────────────────────────┐
-          │  LEARNING LAYER  (style · skips · strengths · likes)        │
-          │  your edits + reasons → distilled → next draft; on submit,  │
-          │  a recap shows exactly what it learned                      │
-          └────────────────────────────────────────────────────────────┘
+└────────┘  └────────┘  └──────────────────────────────┘          │
+        ▲                                                          │
+        └──────── LEARNING LAYER (style · skips · strengths) ◄──────┘
 ```
 
-> Alongside the pack, **People** shortlists who to contact at the company (hiring manager, team
-> PMs, recruiter) with ready-made LinkedIn searches and a short, grounded outreach note.
-
-Each stage does a specific job — and each has a deliberate design choice behind it:
-
-**1 · Fetching** — pulls roles three ways behind one normalised `Job` shape: aggregator boards
-via API, niche portals via filtered, rate-limited web indexing, and direct-employer ATS boards
-(Greenhouse / Lever / Ashby / …). *Where it's clever:* coverage is bounded by a **recency
-horizon, not a page count** — a source's first scan grabs the last 7 days, then every refresh
-pulls only what's new *per source*, so first-time coverage is complete and refreshes never
-re-ingest the same roles.
-
-**2 · Ranking** — every role gets a **0–100 fit score** against your CV and summary, with a
-transparent weighted score alongside as a cross-check and no-API fallback. *Where it's clever:*
-a single cheap batched pass (Haiku, with your profile **prompt-cached**) scores the whole board
-for cents, and the model is told to **spread** scores rather than cluster — so the ranking
-actually separates the strong roles from the noise.
-
-**3 · Evaluating** — on any role it classifies each JD requirement **match / stretch / gap**
-against your CV and gives a four-dimension fit breakdown. *Where it's clever:* it reasons
-**semantically, not by keyword** (a deep 0→1 builder scores high even if the JD never uses those
-words), quotes the JD **verbatim** so every gap is auditable, and folds in your saved
-**strengths** (treated as met) and **skips** (negative signals) so it learns what you don't want.
-
-**4 · Building the application pack** — one click runs the whole sequence in order: **assess the
-JD requirements → fetch the real screening questions → research the role & company → draft the
-CV, cover letter and answers**. *Where it's clever:* the **research runs first and feeds the whole
-pack** — a single framing (angle, why-excited, honest gap, cultural fit, emphasis) leads the CV,
-cover letter *and* the screening answers, and the actual application questions are pulled in early
-so the draft is written to answer what the employer really asks. Every change is marked with its
-original text + rationale, it routes to the right **base-CV variant** per role, keeps the cover
-letter's proven backbone, and **refuses to invent** a fact — leaving a visible placeholder instead.
-The framing lives in its own **Research tab**, with JD fit and the documents beside it.
-
-**5 · Outreach** — for any role, **People** shortlists who to contact (hiring manager, fellow PMs,
-recruiter) with ready-made LinkedIn searches and a short outreach note grounded in the JD and your
-background — so applying isn't only dropping a CV into the void.
-
-**6 · Learning** — every edit you accept, every role you skip or mark "more like this", and your
-stated strengths are captured and **distilled into reusable rules** that condition the next draft.
-*Where it's clever:* re-distillation runs **right before each generation, but only when something
-changed**, and the moment you mark a role applied a **learning recap** shows exactly what that
-submission taught and whether it changed your global rules. This is the part that compounds: the
-first draft is generic, the tenth sounds like you.
-
-## Screenshots
-
-**Scored board with filters** — every role ranked 0–100 against your CV, with the key matching
-drivers it quoted, unmet requirements, work-mode, and Founder-fit / Voice-AI lenses.
+Plus a **chat-based CV Builder** (`/cv-builder`) that interviews you — or assesses a CV you
+upload — and produces a clean, ATS-friendly one-page CV.
 
 ![caddie-ai — the scored job board](assets/board.png)
 
-**A pre-generated application pack** — open a role and the whole pack is there in tabs: Research
-framing, JD fit, the tailored CV and cover letter, and the **Screening** answers (shown here)
-written to the role's *real* application questions. Where a fact is missing it leaves a visible
-orange placeholder rather than inventing one.
-
 ![caddie-ai — a pre-generated application pack with the Screening tab open](assets/review-screening.png)
 
-> Screenshots use **sample data** — a demo profile (“Alex Rivera”) and example roles. No real
-> candidate data.
+> Screenshots use **sample data** — a demo profile ("Alex Rivera") and example roles.
 
----
+## How it works
 
-## The learning loop (the system improves every time you edit)
+Each part has a deliberate design choice behind it — the details live in their own docs:
 
-This is the heart of caddie-ai. The tool's first drafts are decent; its tenth drafts are
-*yours*, because every correction you make is captured as a reusable preference and fed back
-into future drafting and scoring. **Nothing here ever auto-edits your base CV** — the loop
-only ever influences *future drafts* through files you control.
+- **[Sourcing jobs](docs/how-it-works/sourcing.md)** — three fetch tiers (API · filtered browser
+  · direct ATS) behind one `Job` shape; coverage bounded by a recency horizon, not a page count.
+- **[Fit scoring](docs/how-it-works/scoring.md)** — semantic 0–100 fit vs your CV, a transparent
+  weighted cross-check, and a verbatim requirement-by-requirement check. Location is a gate, not
+  a score.
+- **[Drafting the pack](docs/how-it-works/drafting.md)** — research-first shared framing →
+  per-gig base-CV routing → CV / cover letter / answers, with change provenance and no-invention
+  guardrails.
+- **[Board / ATS optimisation](docs/how-it-works/board-optimization.md)** — tunes the pack to how
+  Greenhouse / Lever / Ashby actually screen.
+- **[The learning loop](docs/how-it-works/learning-loop.md)** — your edits + reasons → distilled
+  rules → the next draft. The part that compounds.
+- **[CV Builder](docs/how-it-works/cv-builder.md)** — conversational, import-and-assess, →
+  structured data → deterministic template → PDF.
+- **[Architecture](docs/how-it-works/architecture.md)** · **[Settings reference](docs/settings.md)**
 
-### What it looks like
-
-Every feedback channel is a small, deliberate piece of UI — you're always the one teaching it.
-
-**Edit with a reason.** Click any line in a draft (or any highlighted change) to compare the base
-and AI versions, write your own wording, or have the AI rewrite it to a prompt — and say *why*.
-That rationale is what gets learned, not just the new text.
-
-![caddie-ai — reviewing a change with its rationale](assets/learn-rationale.png)
-
-**Skip + Train.** Passing on a role can teach the scorer: **fewer like this** (a negative anchor)
-or **more like this** (a positive one), with a reason. A plain skip changes no rankings.
-
-![caddie-ai — Skip + Train, teaching the scorer fewer/more like this](assets/learn-skip.png)
-
-**A recap on submit.** The moment you mark a role applied, caddie-ai shows exactly what that
-application taught it — the edits and their reasons — and whether it changed your global rules,
-with links to every guiding file so nothing is a black box.
-
-![caddie-ai — the post-submit learning recap](assets/learn-recap.png)
-
-**1 · Capture — three feedback channels, all human-initiated**
-
-| Channel | Trigger | Where it's stored | What it becomes |
-|---|---|---|---|
-| **Accepted edits** | You edit a drafted CV bullet or CL paragraph in the compare modal | `data/style.md` (append-only log of *AI-suggested → changed-to → your reason*) | Voice & wording preferences |
-| **Bulk CL revision** | You paste a fully rewritten cover letter | the draft is paragraph-diffed; the model *infers a concise reason* per change for you to confirm, then appends to `style.md` | Same, captured in bulk |
-| **Skips** | You pass on a role and give a reason | `data/skips.md` | **Negative anchors** — down-rank similar roles |
-| **Strengths** | You list things you're strong at | `data/strengths.md` | **Positive anchors** — always treated as *met* |
-
-**2 · Distil — raw log → compact, reusable knowledge**
-
-A rebuild step (`engine/learndistill.py`) turns the raw `style.md` log into two distilled
-layers, *without ever modifying the raw log*:
-- **`style-rules.md`** — the model reads every captured *edit + reason* and distils a tight,
-  de-duplicated do/don't rule set in your own voice (grouped VOICE & TONE / HARD DON'TS / CV
-  / COVER LETTER). Duplicates merge; company-specific noise is dropped.
-- **`style-examples.md`** — accepted edits grouped *per application*, so the drafter can
-  sample a **balanced** set of examples rather than over-fitting to one company.
-
-This re-distillation runs **automatically right before each generation** — but *only* when
-you've added edits since the rules were last built (a cheap timestamp check). So every draft
-reflects your latest corrections without re-distilling on every click, and **without a
-schedule** — a fixed cadence would risk drafting from an obsolete rule set. You can also
-trigger a rebuild manually any time.
-
-**3 · Reinforce — fold it into the next generation**
-
-On every draft, single-passage rewrite, and screening answer, caddie-ai assembles a
-*learning block* (`draft._learning_block`) and prepends it to the model's system prompt:
-
-> distilled **rules** (followed strictly) + a **balanced** set of accepted-edit examples
-> (≤2 per company) + the **freshest** raw edits + your **strengths**.
-
-Skips feed the scorer as negative anchors; strengths feed both the scorer and the drafter as
-positive anchors. The result: the more you use it, the more its drafts pre-empt the edits
-you'd have made — and the fewer corrections each new application needs.
-
-### How your applications tune your CV and cover letter
-
-The same loop is what lets *applying* shape your documents over time:
-
-- A cover letter has a **fixed backbone** in a proven voice with `[BRACKETED]` slots; the
-  drafter is told to treat it as *near-sacred*, fill only the slots, and **never invent** a
-  fact to fill one — it leaves a visible `[ tell me … ]` placeholder instead.
-- Every change you accept teaches a durable preference (e.g. "no em-dashes", "0→1 *launcher*,
-  not *serial founder*", "outcomes not responsibilities"), which the next draft obeys.
-- Because the learning lives in *your* files and only ever guides *future* drafts, your base
-  CV/CL stay pristine and under your control — the tool tunes the **drafting behaviour**, not
-  your source documents.
-
-> **Design note:** the learning files are *yours*. caddie-ai appends to the raw log and
-> regenerates the distilled layers, but treats your curated rules as authoritative — it
-> never silently overwrites what you've hand-edited.
-
----
-
-## How fit is evaluated (JD ↔ your CV)
-
-Scoring reasons over your CV + summary semantically — *not* literal keyword overlap (a deep
-0→1 AI builder scores high on "Qualifications" even if the JD never uses those words). It
-runs at two depths plus an on-demand requirement check:
-
-**1 · Fast ranking (every role).** A cheap, batched pass (default `claude-haiku-4-5`, 10
-jobs/call, with the candidate profile **prompt-cached** so repeat runs are near-free) returns
-for each role: a **0–100 fit score**, a one-line reason, up to three **verbatim "drivers"**
-quoted from the JD, an inferred location, and up to three **unmet** requirement tags. A
-transparent **weighted score** (remote / skills / domain / stage, weights you control) runs
-alongside as a cross-check — and as the **no-API fallback** so the app still ranks without a key.
-
-**2 · Deep analysis (on demand, per role).** Opens a fuller picture: a *score rationale*,
-*best-fit* and *shortcomings* paragraphs, the profile **skills it matched**, the **unmet**
-requirements (strictly JD→candidate: things the JD *asks for* that your CV lacks), and a
-four-dimension **breakdown** (Qualifications · Domain · Role & stage · Remote/location), each
-scored 0–100 with a one-line note.
-
-**3 · Requirement-by-requirement check.** `classify_requirements` extracts 5–15 **verbatim**
-requirement phrases from the JD and tags each **match / stretch / mismatch** — quoted exactly
-so the UI can highlight them in place. This is the quick "do I actually clear the bar?" read.
-
-**The link to drafting:** the matched strengths and honest gaps from scoring are passed
-directly into the draft prompt (`role_fit_block`) — matched strengths get surfaced in the
-CV and leaned on in the letter; the most relevant gap is addressed candidly in the cover
-letter's gap paragraph and bridged with your closest true experience. Never hidden, never faked.
-
-Guards throughout: the scorer is told to **spread** scores (no clustering), to quote the JD
-rather than paraphrase, and to **never invent** a requirement the JD doesn't state.
-
----
-
-## How it sources jobs
-
-The interesting part isn't any one fetch — it's the **spread**. caddie-ai reaches the
-market three complementary ways, each behind one normalised `Job` shape so scoring and
-drafting don't care where a role came from:
-
-- **Global aggregator boards — via API.** Public/official feeds (e.g. RemoteOK, Working Nomads, Adzuna, Web3 Career) queried straight through their APIs. Broad reach, cheap, robust.
-- **Targeted niche portals — via allowed, filtered web indexing.** For boards without an API, a rate-limited Playwright tier renders the board's *own* filtered search and indexes **only the matching rows**. It never crawls a full site — it rides the board's filters rather than scraping everything.
-- **Direct-employer companies — via their ATS.** Company career pages on Greenhouse / Lever / Ashby / Workable / Recruitee / SmartRecruiters / Personio are read through the ATS's no-key endpoints, so you track specific companies you care about, not just aggregators.
-
-(Plus the simplest path: paste a single job URL and it normalises that one role.)
-
-### Depth of search = a recency horizon, not a fixed page count
-
-caddie-ai doesn't fetch "the last N pages" or "100 newest rows" and call it done. Each
-source is bounded by a **time horizon** (`recency_days`, default **7**), and it's **incremental per source**:
-
-- **First scan of a source** → it auto-pulls the full backlog inside the horizon (everything posted in the last 7 days).
-- **Every refresh after that** → it only pulls what's *new since that source's own last scan* — tracked per board, so a busy board and a quiet one each advance independently.
-
-The result is comprehensive first-time coverage without re-ingesting the same roles on
-every run, and the window is a single config value you can widen or narrow.
-
-## How drafting works
-
-For a role worth pursuing, **Build Application Pack** runs an ordered sequence rather than a
-single prompt — JD fit → screening questions → research → CV / cover letter / answers:
-
-- **Research-first, shared framing.** Before any document is written, the app researches the role
-  and company and produces one **framing** — the angle to lead with, why-excited, the honest gap,
-  cultural fit, and emphasis. That same framing then conditions the CV, the cover letter *and* the
-  screening answers, so the whole pack tells one coherent story. You can edit any field and
-  rebuild, or hit **↻ Regenerate** — it lives in a dedicated **Research tab** next to JD fit and
-  the documents.
-- **Questions pulled in early.** The real screening questions are fetched up front (Greenhouse /
-  Lever / Ashby / …) so research and the draft are written to answer what the employer actually
-  asks — not just generic prose.
-- **Per-gig base-CV routing.** You keep several base CVs, each flagged for a kind of role
-  (e.g. **Founder**, **EIR / founder-welcome**, **Web3 / Blockchain**, **Voice AI**, **0→1
-  build**). Before tailoring, the drafter auto-picks the closest-fit base from the job's
-  detected flags (`_suggest_app_cv`) — so a Web3 role and an enterprise role *start from
-  different foundations*, not one compromise CV. You can override the pick per draft, and
-  it falls back to your single matching CV when no variants exist. (B2B vs B2C is handled as
-  a draft-time **emphasis** you nudge per application, not a separate base.)
-- **Provenance on every change.** Each edited span is emitted as
-  `<mark class="chg" data-base="ORIGINAL" data-rat="why">new text</mark>`, so the review UI
-  shows an inline diff and a side-by-side compare modal — you see exactly what changed and why.
-- **Screening answers.** If the live application form's questions are supplied, it answers
-  *those* exactly and weaves the relevant themes into the letter subtly; otherwise it infers
-  the likely ones ("Why this company?", salary, notice).
-- **No-invention guardrails.** Never fabricates employers, dates, metrics, or a "why-excited"
-  detail; unknown facts become a visible `[ tell me … ]` placeholder for you to fill.
-- **Graceful degradation.** No API key or a failed call falls back to rendering your base
-  documents untailored, so the UI always works.
-- **House-style enforcement in code**, not just prompt: e.g. em-dashes are stripped from prose
-  and your standard CV page breaks are inserted automatically.
-
----
-
-## Architecture
-
-A small, dependency-light Python codebase — plain modules over frameworks.
-
-```
-adapters/   board fetchers, organised by reliability tier:
-              api      — public JSON feeds & no-key ATSs (Greenhouse/Lever/Ashby/…)
-              listing  — fast static HTML
-              browser  — Playwright, rate-limited, indexes only matching rows
-engine/     fetch (URL→JD) · score + fitscore (weighted + AI fit, requirement check)
-            · draft (research + tailoring + provenance) · learndistill (the learning loop)
-            · people (LinkedIn outreach shortlist) · clchanges (bulk CL diff→reasons)
-            · questions (screening) · pipeline · store (one Job shape) · models (pydantic)
-ui/         FastAPI backend + a static single-page UI
-cv/         base-cv.md, base-cl.md  (your source documents)
-data/       boards.yaml · profile.yaml (criteria + weights) · applications.csv (tracker)
-            · style.md / style-rules.md / style-examples.md (the learning layer)
-            · skips.md (negative anchors) · likes.md (more-like-this) · strengths.md (positive anchors)
-docs/       UX design specs (v1→v4)
-```
-
-**Design principles**
-- **One normalised `Job` shape** across every adapter, validated with `pydantic` — scoring and drafting are decoupled from where a role came from.
-- **Tiered fetching** — build and trust the cheap, robust API tier before the fragile browser tier; the browser tier applies the board's *own* filters and never crawls full sites.
-- **Config over code** — scoring weights, rubric, filters, and board queries live in `profile.yaml`/`boards.yaml` (and the Settings UI), never hardcoded; editing them re-scores everything.
-- **Auditable everything** — drafts keep change provenance; the learning layer keeps the raw log separate from the distilled rules so you can always see *why* the tool behaves as it does.
-- **Human-in-the-loop by construction** — the loop is closed by *your* review, not by an auto-submit.
-
-## Setup
-
-**Prerequisites:** Python 3.11+ (3.9+ works), an [Anthropic API key](https://console.anthropic.com)
-(for AI scoring & drafting), macOS/Linux, ~300 MB free (Playwright downloads a headless browser).
+## Quick start
 
 ```bash
 git clone https://github.com/DM4419/caddie-ai && cd caddie-ai
 cp .env.example .env          # then add your Anthropic API key
-./run.sh                      # first run sets up venv + deps + browser, then opens the app
+./run.sh                      # sets up venv + deps + browser, then opens the app
 ```
 
-`run.sh` creates the virtualenv, installs dependencies, installs the Playwright browser, and
-opens **http://127.0.0.1:8000**. Later runs just start the server.
+Opens **http://127.0.0.1:8000**. The repo ships a **sample** CV and profile so it runs out of
+the box — replace them with your own (Settings tab) to make it meaningful. Full install,
+manual setup, and troubleshooting: **[SETUP.md](SETUP.md)**.
 
-<details><summary>Manual setup (instead of run.sh)</summary>
+## Safety & privacy
 
-```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python -m playwright install chromium      # for the browser-tier boards
-echo "ANTHROPIC_API_KEY=sk-ant-..." > .env
-uvicorn ui.app:app --port 8000
-```
-</details>
-
-> The repo ships a **sample** CV, cover-letter backbone, and profile so it runs out of the
-> box. Replace them with your own (Settings tab, or edit `cv/` and `data/profile.yaml`) to
-> make scoring and drafting meaningful. The app runs without an API key too — it just shows
-> the weighted score and untailored base documents until you add one.
-
-Running into trouble (connection refused, a board that won't scan, Playwright errors)?
-See the troubleshooting table in **[SETUP.md](SETUP.md)**.
-
-## Settings reference
-
-Everything below is editable in the UI's **Settings** tab (and persisted to `data/profile.yaml`).
-
-| Setting | What it controls | Notes |
-|---|---|---|
-| **Base documents** | Your CV + cover-letter backbone (`.md`/`.txt`) | Used to score *and* draft. The CL backbone uses `[BRACKETED]` slots. **Required** for meaningful output. |
-| **AI fit rubric** (`fit_rubric`) | The **primary** scorer — plain-English rules the model follows to rank 0–100 (tiers, domains, deal-breakers) | Saving re-scores everything. This is where most of your judgement lives. |
-| **Candidate summary** (`candidate_summary`) | A LinkedIn-style paragraph the scorer reasons against alongside your CV | Edit in `profile.yaml`. |
-| **Weighted factors** (`weights`) | The secondary, transparent score and the **no-AI fallback**: per-factor weights **summing to 100** (remote / skills / domain / stage) + the keyword lists (`domains`, `skills`, `stage_signals`, `roles`) each factor matches | Hand-tunable; never hardcoded. |
-| **Board search queries** (`role_queries`) | The job titles query-based boards search for | A shared default plus optional per-board overrides. |
-| **Filters** | `geo_gate` (which work modes/regions to keep — US options off by default), spoken `languages` (+ boost/block rules), `recency_days` (the search horizon) | Rows outside the geo gate are dropped before storage. |
-| **Boards** (`boards.yaml`) | The source registry: API / listing / browser / ATS entries, each enable-able | Add company ATS boards by slug; no key needed for Greenhouse/Lever/Ashby/etc. |
-| **Skips / Strengths** | The learning anchors (see [the learning loop](#the-learning-loop-the-system-improves-every-time-you-edit)) | Captured as you use the app; editable as plain markdown. |
-
-**Optional keys in `.env`** (only for specific boards / model overrides):
-
-```bash
-ANTHROPIC_API_KEY=sk-ant-...           # required for AI scoring & drafting
-# ANTHROPIC_MODEL=claude-sonnet-4-6    # drafting model (default)
-# FIT_MODEL=claude-haiku-4-5           # fast/cheap fit scorer (default)
-# ADZUNA_APP_ID=...  ADZUNA_APP_KEY=...   # free: https://developer.adzuna.com
-# WEB3_CAREER_TOKEN=...                # https://web3.career/web3-jobs-api
-```
-
-## Safety & privacy by design
-
-- **No auto-submit, ever.** The agent drafts and fills; you submit. (Avoids ToS/ban risk.)
-- **Human-in-the-loop.** Nothing is finalised without your review.
-- **Local-first.** Runs on `localhost`; no web host, no telemetry.
-- **Secrets stay in `.env`** (gitignored), never in code. The repo ships only `.env.example`.
-- **The browser tier never crawls full sites** — it only ever rides a board's own filters.
-- **Your learning files are yours** — the tool appends and distils, but never silently overwrites your curated rules, and never edits your base CV.
-
-## Roadmap
-
-The core system — source → score → draft → **learn** — is in place and closed, including
-per-gig base-CV routing and re-distillation before each generation. What's intentionally
-*not* built yet:
-
-- **Notifications for hands-off scans** — a ping when a high-fit role lands. Kept optional and
-  outside the fetch path by design (fetching stays in Python, never a third-party automation).
-- **Wider board coverage** — more direct-employer ATS adapters and niche portals.
-- **PDF layout fidelity** — richer export templates matching a human-formatted master.
-
-*Deliberately rejected:* a fixed **schedule** for re-distilling the learning rules — drafts
-should always reflect your latest edits, so re-distillation is triggered by change (before a
-generation), never by a clock that could draft from an obsolete rule set.
+- **No auto-submit, ever** — the agent drafts and fills; you submit.
+- **Local-first** — runs on `localhost`; no web host, no telemetry. Your CV, history, and API
+  key never leave your machine.
+- **Secrets stay in `.env`** (gitignored); the repo ships only `.env.example`.
+- **The browser tier never crawls full sites** — it only rides a board's own filters.
+- **Your learning files are yours** — the tool appends and distils, but never silently
+  overwrites your curated rules or edits your base CV.
 
 ## Tech stack
 
 Python 3.11+ · FastAPI · pydantic · httpx · BeautifulSoup · Playwright · the Anthropic API
 (Sonnet for drafting, Haiku for fast scoring, with prompt caching).
 
-## Status
-
-A working personal project, built phase by phase (see `CLAUDE.md` for the conventions, and
-**[SETUP.md](SETUP.md)** to set it up and customise it). Shared as a portfolio piece — the
-public copy contains sample data only; no real application history or credentials.
+Shared as a portfolio piece — this public copy contains **sample data only**, no real
+application history or credentials.
 
 ## License
 

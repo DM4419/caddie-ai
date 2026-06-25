@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>CV Builder</title>
+<style>
+  :root{--ink:#1f2430;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--bg:#f6f7f9;--green:#166534}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+  /* shared left sidebar (mirrors the main app) so navigation stays visible */
+  .app{display:grid;grid-template-columns:190px 1fr;min-height:100vh}
+  aside{background:#0f1115;color:#cbd2dc;padding:18px 14px;position:sticky;top:0;height:100vh}
+  aside h1{color:#fff;font-size:15px;margin:4px 6px 2px;display:flex;align-items:center;gap:8px}
+  aside .sub{color:#7c8597;font-size:11px;margin:0 6px 18px}
+  nav button,nav a{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;color:#cbd2dc;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;text-decoration:none;box-sizing:border-box}
+  nav a:hover{background:#1a1d24;color:#fff}
+  nav a.active{background:var(--accent);color:#fff}
+  nav .dot{width:7px;height:7px;border-radius:50%;background:#3a4150}
+  nav a.active .dot{background:#fff}
+  main{min-width:0;display:flex;flex-direction:column;min-height:100vh}
+  .crumbs{display:flex;align-items:center;gap:8px;padding:10px 18px;background:#fff;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+  .crumbs a{color:var(--accent);text-decoration:none}
+  .crumbs a:hover{text-decoration:underline}
+  .crumbs .sep{color:#cbd2dc}
+  .crumbs .here{color:var(--ink);font-weight:600}
+  .top{display:flex;align-items:center;gap:10px;padding:12px 18px;background:#fff;border-bottom:1px solid var(--line)}
+  .top h1{font-size:16px;margin:0}
+  .top .sub{color:var(--muted);font-size:12.5px}
+  .top .grow{flex:1}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;color:var(--ink)}
+  .btn.main{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.ghost{color:var(--muted)}
+  .btn:disabled{opacity:.55;cursor:default}
+  .wrap{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px;max-width:1280px;margin:0 auto}
+  .panel{background:#fff;border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;min-height:0}
+  .panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0;padding:12px 16px;border-bottom:1px solid var(--line)}
+  /* chat */
+  .chat{height:calc(100vh - 190px);display:flex;flex-direction:column}
+  .msgs{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+  .msg{max-width:85%;padding:9px 13px;border-radius:14px;white-space:pre-wrap}
+  .msg.assistant{background:#eef2ff;color:#1e293b;border-bottom-left-radius:4px;align-self:flex-start}
+  .msg.user{background:var(--accent);color:#fff;border-bottom-right-radius:4px;align-self:flex-end}
+  .msg.typing{color:var(--muted);background:#f1f5f9}
+  .composer{border-top:1px solid var(--line);padding:10px;display:flex;gap:8px}
+  .composer textarea{flex:1;resize:none;border:1px solid var(--line);border-radius:8px;padding:9px;font:inherit;height:44px}
+  .tools{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .assess{margin:10px 16px;padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12.5px;color:#14532d}
+  /* full-width CV assessment scorecard, above the chat + preview */
+  .assesscard{margin:16px 16px 0;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 18px;display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+  .assesscard .ac-text{flex:1;min-width:240px}
+  .assesscard .ac-sum{font-weight:600;color:var(--ink)}
+  .assesscard .ac-rec{color:var(--muted);font-size:13px;margin-top:3px}
+  .assesscard .ac-scores{display:flex;gap:16px;flex-wrap:wrap}
+  .ac-score{text-align:center;min-width:66px}
+  .ac-score .ac-val{font-size:20px;font-weight:700;line-height:1}
+  .ac-score .ac-lbl{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
+  .ac-score .ac-bar{height:5px;border-radius:3px;background:#eef0f3;margin-top:5px;overflow:hidden}
+  .ac-score .ac-bar>i{display:block;height:100%;border-radius:3px}
+  .importbox{padding:12px 16px;border-bottom:1px solid var(--line);display:none}
+  .importbox textarea{width:100%;height:90px;border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit}
+  /* preview */
+  .previewwrap{height:calc(100vh - 190px);overflow:auto;padding:16px}
+  .goalchip{margin:0 16px 0;padding:8px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;font-size:12px;color:#1e40af}
+  .skills{padding:10px 16px;border-bottom:1px solid var(--line)}
+  .chip{display:inline-block;margin:3px;padding:5px 10px;border:1px solid var(--line);border-radius:20px;font-size:12px;cursor:pointer;background:#fff}
+  .chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  /* a newly-suggested (not yet added) skill — green border + dot, "tap to add" */
+  .chip.new{border-color:#22c55e;box-shadow:0 0 0 1px #22c55e}
+  .chip.new::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#22c55e;margin-right:6px;vertical-align:middle}
+  .hint{color:var(--muted);font-size:12px}
+  /* CV preview + print share these styles */
+  /* Match the application CV template (PRINT_CSS in app.js): Georgia body, big
+     centered name, blue uppercase section headers, round blue bullets. */
+  .cvb-cv{background:#fff;font:10.8pt/1.5 'Georgia','Iowan Old Style',Cambria,serif;color:#2b2f36;max-width:780px;margin:0 auto;padding:42px 46px;border:1px solid var(--line)}
+  .cvb-header h1{font-family:'Helvetica Neue',Arial,sans-serif;font-size:25pt;font-weight:700;letter-spacing:.4px;text-align:center;color:#16202e;margin:0 0 4px}
+  .cvb-headline{text-align:center;color:#5b6472;font-size:10pt;margin:0 0 2px}
+  .cvb-contact{text-align:center;color:#5b6472;font-size:9.3pt;letter-spacing:.3px;margin:0 0 16px}
+  .cvb-section{margin-top:2px}
+  .cvb-section h2{font-family:'Helvetica Neue',Arial,sans-serif;font-size:10.2pt;font-weight:700;text-transform:uppercase;letter-spacing:1.6px;color:#2d6cdf;border-bottom:1.5px solid #2d6cdf;padding-bottom:3px;margin:18px 0 8px}
+  .cvb-entry{margin-bottom:10px}
+  .cvb-entry-head{display:flex;justify-content:space-between;gap:10px}
+  .cvb-entry-title{font-weight:700;color:#16202e}
+  .cvb-entry-dates{color:#5b6472;font-size:9pt;white-space:nowrap}
+  .cvb-entry-org{color:#5b6472;font-style:italic}
+  .cvb-cv ul{margin:5px 0 11px;padding-left:18px;list-style:none}
+  .cvb-cv li{position:relative;margin:3.5px 0;padding-left:15px}
+  .cvb-cv li::before{content:"";position:absolute;left:1px;top:.62em;width:5px;height:5px;background:#2d6cdf;border-radius:50%}
+  .cvb-chips .cvb-chip{display:inline-block;margin:2px 6px 2px 0;padding:2px 9px;background:#eef3fd;color:#2d4a7a;border-radius:5px;font-size:9.5pt}
+  /* inline-editable fields on the live preview */
+  .cvb-edit{cursor:pointer;border-radius:3px}
+  .cvb-edit:hover{background:#eef2ff;box-shadow:0 0 0 1px #c7d2fe}
+  .cvb-ph{background:#fef9c3;color:#854d0e;border:1px dashed #eab308;padding:0 5px;font-style:normal;font-weight:500}
+  .cvb-ph:hover{background:#fde68a}
+  .cvb-edit input{font:inherit;color:inherit;border:1px solid var(--accent);border-radius:4px;padding:0 4px;min-width:80px}
+  #printArea{display:none}
+  @media print{
+    body *{visibility:hidden}
+    #printArea,#printArea *{visibility:visible}
+    #printArea{display:block;position:absolute;top:0;left:0;width:100%}
+    #printArea .cvb-cv{border:0;max-width:100%;margin:0;padding:0.5in 0.6in}
+    @page{margin:0}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <h1><svg width="20" height="20" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true" style="flex:0 0 auto"><rect x="6" y="2" width="2" height="2" fill="#16a34a"/><rect x="8" y="2" width="2" height="2" fill="#22c55e"/><rect x="10" y="2" width="2" height="2" fill="#16a34a"/><rect x="6" y="4" width="2" height="2" fill="#22c55e"/><rect x="8" y="4" width="2" height="2" fill="#16a34a"/><rect x="5" y="2" width="1" height="11" fill="#cbd2dc"/><rect x="8" y="12" width="2" height="2" fill="#ffffff"/><rect x="3" y="14" width="10" height="1" fill="#3a4150"/></svg>Caddie AI</h1>
+    <p class="sub">Co-pilot for job movers</p>
+    <nav>
+      <a href="/#/jobs"><span class="dot"></span>Jobs</a>
+      <a href="/#/boards"><span class="dot"></span>Boards</a>
+      <a href="/cv-builder" class="active"><span class="dot"></span>CV Builder</a>
+      <a href="/#/settings"><span class="dot"></span>Settings</a>
+    </nav>
+  </aside>
+  <main>
+  <nav class="crumbs"><a href="/#/jobs">Jobs</a><span class="sep">›</span><span class="here">CV Builder</span></nav>
+  <div class="top">
+    <h1>📝 CV Builder</h1>
+    <span class="sub">Answer a few questions — I'll build your CV.</span>
+    <span class="grow"></span>
+    <button class="btn ghost" onclick="newSession()">↻ Start over</button>
+    <button class="btn main" onclick="downloadPdf()">⬇ Download PDF</button>
+  </div>
+
+  <div id="assessCard" class="assesscard" style="display:none"></div>
+
+  <div class="wrap">
+    <!-- LEFT: chat -->
+    <div class="panel chat">
+      <div class="tools">
+        <button class="btn ghost" onclick="toggleImport()">📄 Import a CV</button>
+        <span class="hint">Optional — start from an existing CV, or just chat.</span>
+      </div>
+      <div class="importbox" id="importbox">
+        <div style="margin-bottom:8px">
+          <span class="hint" style="display:block;margin-bottom:4px">Upload a CV (PDF, Word, or text):</span>
+          <input type="file" id="importFile" accept=".pdf,.docx,.md,.txt" onchange="importFile()"/>
+        </div>
+        <textarea id="importText" placeholder="or paste your cv here as text"></textarea>
+        <div style="margin-top:8px;display:flex;gap:10px;align-items:center;justify-content:flex-end">
+          <span id="importStatus" class="hint"></span>
+          <button class="btn" id="importBtn" onclick="importText()">Import &amp; assess</button>
+        </div>
+      </div>
+      <div id="goalchip" class="goalchip" style="display:none"></div>
+      <div class="msgs" id="msgs"></div>
+      <div class="composer">
+        <textarea id="input" placeholder="Type your answer…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send()}"></textarea>
+        <button class="btn main" onclick="send()">Send</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: live CV + skills -->
+    <div class="panel">
+      <h2>Your CV — live preview</h2>
+      <div class="skills" id="skillsBox" style="display:none">
+        <div class="hint" id="skillsHint" style="margin-bottom:4px">Tap the skills that fit you:</div>
+        <div id="skillChips"></div>
+      </div>
+      <div class="previewwrap"><div id="preview"></div></div>
+    </div>
+  </div>
+
+  <div id="printArea"></div>
+  </main>
+</div>
+<script>
+"use strict";
+let SID = localStorage.getItem("cvb_sid") || "";
+let selectedSkills = [];
+const SKILL_TARGET = 7;       // aim for ~7 core skills
+let LAST = null;              // last session payload (for cancelling an inline edit)
+
+async function api(path, opts){
+  const r = await fetch(path, opts);
+  if(!r.ok){ let d=r.statusText; try{d=(await r.json()).detail||d}catch(e){} throw new Error(d); }
+  return r.json();
+}
+function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+async function boot(){
+  if(SID){ try{ render(await api(`/api/cvbuilder/${SID}`)); return; }catch(e){ SID=""; } }
+  await newSession();
+}
+async function newSession(){
+  const s = await api("/api/cvbuilder/session", {method:"POST"});
+  SID = s.id; localStorage.setItem("cvb_sid", SID);
+  selectedSkills = [];
+  document.getElementById("importText").value = "";
+  document.getElementById("importFile").value = "";
+  document.getElementById("importbox").style.display = "none";
+  document.getElementById("skillChips").innerHTML = "";       // clear stale skill bubbles
+  document.getElementById("skillsBox").style.display = "none";
+  document.getElementById("assessCard").style.display = "none";  // clear stale scorecard
+  document.getElementById("assessCard").innerHTML = "";
+  render(s);
+}
+function toggleImport(){ const b=document.getElementById("importbox"); b.style.display = b.style.display==="block"?"none":"block"; }
+
+async function send(){
+  const el = document.getElementById("input");
+  const text = el.value.trim(); if(!text) return;
+  el.value = "";
+  // optimistic: show the user's message + a typing bubble
+  addMsg("user", text); typing(true);
+  try{ render(await api(`/api/cvbuilder/${SID}/message`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text})})); }
+  catch(e){ typing(false); addMsg("assistant", "⚠️ "+e.message); }
+}
+function setImporting(on){
+  const btn = document.getElementById("importBtn"), st = document.getElementById("importStatus");
+  if(btn) btn.disabled = on;
+  if(st) st.textContent = on ? "⏳ Reading & assessing your CV…" : "";
+}
+async function importText(){
+  const t = document.getElementById("importText").value.trim();
+  if(!t){ return; }
+  typing(true); setImporting(true);
+  try{ render(await api(`/api/cvbuilder/${SID}/import`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:t})})); toggleImport(); }
+  catch(e){ alert(e.message); }
+  finally{ typing(false); setImporting(false); }
+}
+async function importFile(){
+  const f = document.getElementById("importFile").files[0]; if(!f) return;
+  const fd = new FormData(); fd.append("file", f); typing(true); setImporting(true);
+  try{ render(await api(`/api/cvbuilder/${SID}/import-file`, {method:"POST",body:fd})); toggleImport(); }
+  catch(e){ alert(e.message); }
+  finally{ typing(false); setImporting(false); }
+}
+async function loadSkills(){
+  try{
+    const {skills} = await api(`/api/cvbuilder/${SID}/skills/suggest`);
+    if(!skills.length) return;
+    document.getElementById("skillsBox").style.display="block";
+    // Nudge toward ~7 core skills: highlight only the top 1-2 highest-impact
+    // (suggestions come ordered most-relevant first) and only while under target.
+    const below = selectedSkills.length < SKILL_TARGET;
+    let toFlag = below ? 2 : 0;
+    document.getElementById("skillChips").innerHTML = skills.map(s=>{
+      const on = selectedSkills.includes(s);
+      let flag = false;
+      if(!on && toFlag>0){ flag = true; toFlag--; }
+      return `<span class="chip ${on?'on':''} ${flag?'new':''}" onclick="toggleSkill(this,'${esc(s).replace(/'/g,"&#39;")}')">${esc(s)}</span>`;
+    }).join("");
+    const hint = document.getElementById("skillsHint");
+    if(hint) hint.textContent = below
+      ? `Aim for about ${SKILL_TARGET} core skills — you've picked ${selectedSkills.length}. The green one(s) are worth adding.`
+      : `${selectedSkills.length} core skills picked — that's a solid set.`;
+  }catch(e){}
+}
+async function toggleSkill(elm, s){
+  elm.classList.toggle("on");
+  const i = selectedSkills.indexOf(s);
+  if(i>=0) selectedSkills.splice(i,1); else selectedSkills.push(s);
+  render(await api(`/api/cvbuilder/${SID}/skills`, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({skills:selectedSkills})}));
+}
+
+function typing(on){
+  const m = document.getElementById("msgs");
+  let t = document.getElementById("typing");
+  if(on){ if(!t){ t=document.createElement("div"); t.id="typing"; t.className="msg assistant typing"; t.textContent="…"; m.appendChild(t); m.scrollTop=m.scrollHeight; } }
+  else if(t){ t.remove(); }
+}
+function addMsg(role, text){
+  const m = document.getElementById("msgs");
+  const d = document.createElement("div"); d.className="msg "+role; d.textContent=text;
+  m.appendChild(d); m.scrollTop=m.scrollHeight;
+}
+function scoreColor(v){ return v>=75 ? '#16a34a' : v>=50 ? '#d97706' : '#dc2626'; }
+function renderAssessCard(a){
+  const card = document.getElementById("assessCard");
+  if(!a || !(a.summary || (a.scores && a.scores.length))){ card.style.display="none"; card.innerHTML=""; return; }
+  const scores = (a.scores||[]).map(sc=>`
+    <div class="ac-score" title="${esc(sc.note)}">
+      <div class="ac-val" style="color:${scoreColor(sc.score)}">${sc.score}</div>
+      <div class="ac-lbl">${esc(sc.label)}</div>
+      <div class="ac-bar"><i style="width:${Math.max(4,sc.score)}%;background:${scoreColor(sc.score)}"></i></div>
+    </div>`).join("");
+  card.innerHTML = `
+    <div class="ac-text">
+      <div class="ac-sum">📋 ${esc(a.summary)}</div>
+      ${a.recommendation ? `<div class="ac-rec">💡 ${esc(a.recommendation)}</div>` : ""}
+    </div>
+    <div class="ac-scores">${scores}</div>`;
+  card.style.display="flex";
+}
+function render(s){
+  LAST = s;
+  typing(false);
+  // messages
+  const m = document.getElementById("msgs");
+  m.innerHTML = (s.messages||[]).map(x=>`<div class="msg ${x.role}">${esc(x.text)}</div>`).join("");
+  m.scrollTop = m.scrollHeight;
+  // goal (hide when absent so it clears on reset)
+  const gc = document.getElementById("goalchip");
+  if(s.goal && (s.goal.target_summary||s.goal.raw)){ gc.style.display="block"; gc.textContent = "🎯 Aiming for: "+(s.goal.target_summary||s.goal.raw); }
+  else { gc.style.display="none"; gc.textContent=""; }
+  // assessment scorecard (full-width, above everything) — hide when absent
+  renderAssessCard(s.assessment);
+  // preview
+  document.getElementById("preview").innerHTML = s.cv_html || "";
+  // skills: sync selection from server; show suggestions once a goal exists, else clear
+  selectedSkills = (s.cv && s.cv.skills) || [];
+  if(s.goal){ loadSkills(); }
+  else { document.getElementById("skillsBox").style.display="none"; document.getElementById("skillChips").innerHTML=""; }
+}
+// ---- inline editing of CV fields (click a yellow placeholder or any value) ----
+function onPreviewClick(ev){
+  const el = ev.target.closest(".cvb-edit");
+  if(!el || el.querySelector("input")) return;
+  ev.stopPropagation();
+  const cur = el.classList.contains("cvb-ph") ? "" : el.textContent;
+  const sec = el.dataset.sec||"", idx = parseInt(el.dataset.i||"-1",10), field = el.dataset.field;
+  const input = document.createElement("input");
+  input.value = cur; el.textContent=""; el.appendChild(input); input.focus(); input.select();
+  let done = false;
+  const finish = async (commit)=>{
+    if(done) return; done = true;
+    if(commit){
+      try{ render(await api(`/api/cvbuilder/${SID}/field`, {method:"POST",headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({section:sec,index:idx,field,value:input.value})})); return; }
+      catch(e){ alert(e.message); }
+    }
+    if(LAST) document.getElementById("preview").innerHTML = LAST.cv_html;   // cancel/fail -> restore
+  };
+  input.addEventListener("keydown", e=>{
+    if(e.key==="Enter"){ e.preventDefault(); finish(true); }
+    else if(e.key==="Escape"){ finish(false); }
+  });
+  input.addEventListener("blur", ()=>finish(true));
+}
+
+async function downloadPdf(){
+  // print the clean, non-editable render (no yellow placeholders / edit affordances)
+  const html = await (await fetch(`/api/cvbuilder/${SID}/cv.html`)).text();
+  document.getElementById("printArea").innerHTML = html;
+  window.print();
+}
+document.getElementById("preview").addEventListener("click", onPreviewClick);
+boot();
+</script>
+</body>
+</html>

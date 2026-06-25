@@ -16,6 +16,7 @@ __pycache__/
 # to this file too.
 data/jobs/*
 data/drafts/*
+data/cvbuilder/*
 data/applications.csv
 data/state.json
 data/draft-backup-*.json

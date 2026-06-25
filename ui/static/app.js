@@ -1,4 +1,4 @@
-// caddie-ai — front-end. Talks to the FastAPI backend.
+// Job Applicator — Phase 0 front-end. Talks to the FastAPI backend.
 "use strict";
 
 const modeCls = { remote: "m-remote", hybrid: "m-hybrid", onsite: "m-onsite" };
@@ -8,8 +8,16 @@ const stPill = {
   review: '<span class="status-pill st-review">in review</span>',
   approved: '<span class="status-pill st-approved">approved</span>',
   applied: '<span class="status-pill st-applied">applied</span>',
+  interview: '<span class="status-pill st-interview">interview</span>',
+  rejected: '<span class="status-pill st-rejected">rejected</span>',
   skipped: '<span class="status-pill st-skipped">skipped</span>',
 };
+// Statuses for roles you've already sent off. interview/rejected are post-apply
+// outcomes — they replace "applied" but still count as engaged: the company's other
+// roles stay out of Active, and the role lives under its own status tab, not Active.
+const APPLIED_LIKE = ["applied", "interview", "rejected"];
+const TRIAGED = APPLIED_LIKE.concat("skipped");   // everything that has left the Active list
+const isTriaged = j => TRIAGED.includes(j.status);
 
 let currentJob = null;
 
@@ -100,7 +108,12 @@ function writeHash() {
 function syncJobControls() {
   const set = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
   set("workFilter", workFilter); set("dateFilter", dateFilter); set("sortBy", sortBy);
-  JOB_TABS.forEach(t => { const e = document.getElementById("tab-" + t); if (e) e.classList.toggle("on", jobView === t); });
+  if (isShortlistView(jobView)) currentShortlist = jobView;
+  document.getElementById("tab-active")?.classList.toggle("on", jobView === "active");
+  document.getElementById("shortlistMain")?.classList.toggle("on", isShortlistView(jobView));
+  const ss = document.getElementById("statusSel");
+  if (ss) ss.value = ["applied", "interview", "rejected", "skipped", "archived"].includes(jobView) ? jobView : "";
+  renderShortlistControl();
 }
 function routeFromHash() {
   const raw = (location.hash || "").replace(/^#\/?/, "");
@@ -124,7 +137,7 @@ window.addEventListener("hashchange", () => {
 
 // ---- jobs list -----------------------------------------------------------
 let jobView = "active";
-const JOB_TABS = ["active", "founder", "voice", "bookmarked", "applied", "skipped", "archived"];
+const JOB_TABS = ["active", "founder", "voice", "bookmarked", "applied", "interview", "rejected", "skipped", "archived"];
 const FOUNDER_FLAGS = ["eir", "zero_to_one", "founder_welcome"];
 const FLAG_CHIP = {           // job flags -> compact label
   eir: ["EIR", "Entrepreneur / Founder-in-Residence"],
@@ -139,11 +152,62 @@ function flagChips(j) {
     return `<span class="flagchip" title="${esc(tip)}">⚑ ${esc(lbl)}</span>`;
   }).join("");
 }
+// ---- shortlists (consolidated dropdown; config-driven, editable in Settings) ----
+let SHORTLISTS = [{ id: "bookmarked", label: "Bookmarked", icon: "★", match: "bookmarked" }];
+let currentShortlist = "bookmarked";
+function shortlistById(id) { return SHORTLISTS.find(s => s.id === id); }
+function isShortlistView(v) { return SHORTLISTS.some(s => s.id === v); }
+function matchesShortlist(j, s) {
+  if (!s) return false;
+  if (s.match === "bookmarked") return !!j.bookmarked;
+  if (s.match === "flags") return (j.flags || []).some(f => (s.flags || []).includes(f));
+  if (s.match === "keywords") {
+    const hay = `${j.role || ""} ${j.company || ""} ${j.title || ""} ${j.location || ""}`.toLowerCase();
+    return (s.keywords || []).some(k => k && hay.includes(k.toLowerCase()));
+  }
+  return false;
+}
+async function loadShortlists() {
+  try {
+    const p = await api("/api/profile");
+    const s = (p.filters && p.filters.shortlists) || [];
+    if (s.length) SHORTLISTS = s;
+  } catch (e) { /* keep default */ }
+  if (!isShortlistView(currentShortlist)) currentShortlist = (SHORTLISTS[0] || {}).id || "bookmarked";
+  renderShortlistControl();
+}
+function shortlistCount(s) {
+  if (!_jobs) return 0;
+  const applied = appliedCompanies();
+  return _jobs.filter(j => matchesShortlist(j, s) && !isTriaged(j) && !applied.has((j.company || "").trim().toLowerCase())).length;
+}
+function renderShortlistControl() {
+  const main = document.getElementById("shortlistMain"), menu = document.getElementById("shortlistMenu");
+  if (!main || !menu) return;
+  const cur = shortlistById(currentShortlist) || SHORTLISTS[0];
+  if (cur) main.innerHTML = `${esc(cur.icon || "")} ${esc(cur.label)} <span class="muted">${shortlistCount(cur) || ""}</span>`;
+  menu.innerHTML = SHORTLISTS.map(s =>
+    `<button onclick="pickShortlist('${esc(s.id)}')">${esc(s.icon || "")} ${esc(s.label)}<span class="muted" style="float:right;margin-left:14px">${shortlistCount(s) || ""}</span></button>`).join("");
+}
+function toggleShortlistMenu(e) {
+  if (e) e.stopPropagation();
+  document.getElementById("shortlistSplit").classList.toggle("open");
+}
+function pickShortlist(id) {
+  currentShortlist = id;
+  document.getElementById("shortlistSplit").classList.remove("open");
+  setJobView(id);
+}
+document.addEventListener("click", () => { const sp = document.getElementById("shortlistSplit"); if (sp) sp.classList.remove("open"); });
+
 function setJobView(v) {
   jobView = v;
-  JOB_TABS.forEach(t => { const el = document.getElementById("tab-" + t); if (el) el.classList.toggle("on", v === t); });
+  if (isShortlistView(v)) currentShortlist = v;
+  document.getElementById("tab-active")?.classList.toggle("on", v === "active");
+  document.getElementById("shortlistMain")?.classList.toggle("on", isShortlistView(v));
   const sel = document.getElementById("statusSel");
-  if (sel) { const isStatus = ["applied", "skipped", "archived"].includes(v); sel.value = isStatus ? v : ""; sel.classList.toggle("on", isStatus); }
+  if (sel) { const isStatus = ["applied", "interview", "rejected", "skipped", "archived"].includes(v); sel.value = isStatus ? v : ""; sel.classList.toggle("on", isStatus); }
+  renderShortlistControl();
   loadJobs();
   writeHash();
 }
@@ -189,6 +253,14 @@ let _jobs = [];
 let workFilter = "all";
 let dateFilter = "any";
 let sortBy = "score";
+let searchQuery = "";
+let _searchTimer = null;
+// Search across ALL statuses + archived (debounced; re-fetches from the server).
+function setSearch(v) {
+  searchQuery = (v || "").trim();
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(loadJobs, 220);
+}
 function setWorkFilter(v) { workFilter = v; renderJobRows(); writeHash(); }
 function setDateFilter(v) { dateFilter = v; renderJobRows(); writeHash(); }
 function setSortBy(v) { sortBy = v; renderJobRows(); writeHash(); }
@@ -230,7 +302,7 @@ function seniorityRank(j) {
 }
 
 async function loadJobs() {
-  const data = await api(`/api/jobs?archived=${jobView === "archived"}`);
+  const data = await api(`/api/jobs?archived=${jobView === "archived"}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""}`);
   document.getElementById("cvBanner").classList.toggle("hide", data.base.cv);
   _sources = data.sources || {};
   _jobs = data.jobs;
@@ -238,44 +310,46 @@ async function loadJobs() {
   const setOpt = (id, base, n) => { const o = document.getElementById(id); if (o) o.textContent = n ? `${base} (${n})` : base; };
   setOpt("opt-archived", "Archived", data.archived_count);
   setOpt("opt-applied", "Applied", c.applied);
+  setOpt("opt-interview", "Interview", c.interview);
+  setOpt("opt-rejected", "Rejected", c.rejected);
   setOpt("opt-skipped", "Skipped", c.skipped);
-  // founder / voice / bookmarked counts recomputed client-side so they match the rows
-  // (excludes applied/skipped AND roles from companies you've already applied to).
-  const applied = appliedCompanies();
-  const inApplied = j => applied.has((j.company || "").trim().toLowerCase());
-  const untri = j => j.status !== "applied" && j.status !== "skipped" && !j.role_off_target && !inApplied(j);
-  const setN = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n ? `(${n})` : ""; };
-  setN("founderCount", _jobs.filter(j => untri(j) && (j.flags || []).some(f => FOUNDER_FLAGS.includes(f))).length);
-  setN("voiceCount", _jobs.filter(j => untri(j) && (j.flags || []).includes("voice_ai")).length);
-  setN("bookmarkedCount", _jobs.filter(j => j.bookmarked && j.status !== "applied" && j.status !== "skipped" && !inApplied(j)).length);
+  // shortlist labels + live counts (replaces the old founder/voice/bookmarked badges)
+  renderShortlistControl();
   renderJobRows();
 }
 
 // Companies you've already applied to — their OTHER roles drop out of the active /
 // founder / voice / bookmarked lists (they remain reachable only under Applied).
 function appliedCompanies() {
-  return new Set((_jobs || []).filter(j => j.status === "applied")
+  return new Set((_jobs || []).filter(j => APPLIED_LIKE.includes(j.status))
     .map(j => (j.company || "").trim().toLowerCase()).filter(Boolean));
 }
 
 function renderJobRows() {
-  // tab scope: Active excludes applied/skipped + roles from applied companies
   let jobs = _jobs;
-  const applied = appliedCompanies();
-  const inApplied = j => applied.has((j.company || "").trim().toLowerCase());
-  // active/founder/voice hide off-target roles (e.g. Technical PM); they stay reachable via their own status tabs
-  const untriaged = j => j.status !== "applied" && j.status !== "skipped" && !j.role_off_target && !inApplied(j);
-  if (jobView === "active") jobs = jobs.filter(untriaged);
-  else if (jobView === "founder") jobs = jobs.filter(j => untriaged(j) && (j.flags || []).some(f => FOUNDER_FLAGS.includes(f)));
-  else if (jobView === "voice") jobs = jobs.filter(j => untriaged(j) && (j.flags || []).includes("voice_ai"));
-  else if (jobView === "bookmarked") jobs = jobs.filter(j => j.bookmarked && j.status !== "applied" && j.status !== "skipped" && !inApplied(j));
-  else if (jobView === "applied") jobs = jobs.filter(j => j.status === "applied");
-  else if (jobView === "skipped") jobs = jobs.filter(j => j.status === "skipped");
-  const tabTotal = jobs.length;
-  if (workFilter !== "all") jobs = jobs.filter(j => workTier(j).key === workFilter);
-  if (dateFilter !== "any") {
-    const max = parseInt(dateFilter, 10);
-    jobs = jobs.filter(j => { const a = jobAgeDays(j); return a !== null && a <= max; });
+  let tabTotal;
+  if (searchQuery) {
+    // Search mode: _jobs holds every match across all statuses + archived — show them
+    // all (no status-tab / applied-company / work-type / date filtering). Sort applies.
+    tabTotal = jobs.length;
+  } else {
+    // tab scope: Active excludes applied/skipped + roles from applied companies
+    const applied = appliedCompanies();
+    const inApplied = j => applied.has((j.company || "").trim().toLowerCase());
+    // active/founder/voice hide off-target roles (e.g. Technical PM); they stay reachable via their own status tabs
+    const untriaged = j => !isTriaged(j) && !j.role_off_target && !inApplied(j);
+    if (jobView === "active") jobs = jobs.filter(untriaged);
+    else if (isShortlistView(jobView)) jobs = jobs.filter(j => matchesShortlist(j, shortlistById(jobView)) && !isTriaged(j) && !inApplied(j));
+    else if (jobView === "applied") jobs = jobs.filter(j => j.status === "applied");
+    else if (jobView === "interview") jobs = jobs.filter(j => j.status === "interview");
+    else if (jobView === "rejected") jobs = jobs.filter(j => j.status === "rejected");
+    else if (jobView === "skipped") jobs = jobs.filter(j => j.status === "skipped");
+    tabTotal = jobs.length;
+    if (workFilter !== "all") jobs = jobs.filter(j => workTier(j).key === workFilter);
+    if (dateFilter !== "any") {
+      const max = parseInt(dateFilter, 10);
+      jobs = jobs.filter(j => { const a = jobAgeDays(j); return a !== null && a <= max; });
+    }
   }
   const SORTS = {
     score: { label: "AI score", cmp: (a, b) => b.score - a.score },
@@ -299,10 +373,14 @@ function renderJobRows() {
   if (workFilter !== "all") parts.push(TIERS.find(t => t.key === workFilter).label);
   if (dateFilter !== "any") parts.push(`posted ≤ ${dateFilter}d`);
   const filt = parts.length ? ` · ${parts.join(" · ")}` : "";
-  meta.textContent = tabTotal
+  meta.textContent = searchQuery
+    ? `${jobs.length} result(s) for “${searchQuery}” · across all statuses · sorted by ${sort.label}`
+    : tabTotal
     ? `${jobs.length} of ${tabTotal} ${jobView} job(s)${filt} · sorted by ${sort.label}`
     : (jobView === "archived" ? "No archived jobs."
       : jobView === "applied" ? "No applied jobs yet."
+      : jobView === "interview" ? "No interviews yet — open an applied role and mark “📨 Interview” when you hear back."
+      : jobView === "rejected" ? "No rejections logged."
       : jobView === "skipped" ? "No skipped jobs."
       : jobView === "founder" ? "No founder-fit roles yet (EIR · 0→1 · ex-founder-welcome) — scan more boards."
       : jobView === "voice" ? "No Voice / conversational-AI roles yet — scan more boards."
@@ -310,7 +388,10 @@ function renderJobRows() {
       : "No active jobs — click ↻ Refresh, or + Paste JD.");
   const tbody = document.getElementById("jobRows");
   if (!jobs.length) {
-    tbody.innerHTML = `<tr><td colspan="8" class="muted">${tabTotal ? "No jobs match this work-type filter." : "Nothing here yet. Click “↻ Refresh” to scan boards, or “+ Paste JD”."}</td></tr>`;
+    const empty = searchQuery ? `No jobs match “${esc(searchQuery)}”.`
+      : tabTotal ? "No jobs match this work-type filter."
+      : "Nothing here yet. Click “↻ Refresh” to scan boards, or “+ Paste JD”.";
+    tbody.innerHTML = `<tr><td colspan="8" class="muted">${empty}</td></tr>`;
     return;
   }
   tbody.innerHTML = jobs.map(j => {
@@ -467,11 +548,12 @@ async function saveJobUrl() {
 
 // ---- review --------------------------------------------------------------
 async function openReview(id) {
-  const { job, cv_options, analysis_stale } = await api(`/api/jobs/${id}`);
+  const { job, cv_options, analysis_stale, board } = await api(`/api/jobs/${id}`);
   currentJob = job;
   // old-format analysis (skills from the fixed candidate list, not the JD) -> drop it so it recomputes
   if (analysis_stale && job.analysis) job.analysis = null;
   currentJob._cvOptions = cv_options || [];
+  currentJob._board = board || null;
   currentJob._cvUsed = (job.draft && job.draft.cv_used) || null;
   // restore the research/framing used to build the pack (persisted on the draft)
   // so the Research tab is populated after a reload instead of empty
@@ -481,6 +563,7 @@ async function openReview(id) {
       gap: dctx.gap || "", cultural_fit: dctx.cultural_fit || "", emphasis: dctx.emphasis || "" };
     currentJob._opener = dctx.opener || "auto";
     currentJob._research = { angle: dctx.angle || "", hooks: dctx.hooks || [] };
+    currentJob._extraContext = dctx.extra_context || "";   // keep user context across rebuilds
   }
   const title = `${job.role} — ${job.company}`;
   document.getElementById("rwTitle").textContent = title;
@@ -497,9 +580,9 @@ async function openReview(id) {
   if (job.salary) chips.push(`<span class="rw-chip" style="color:#166534;font-weight:600">${esc(job.salary)}</span>`);
   chips.push(`<span class="rw-chip">${jdLink} <a style="cursor:pointer;color:var(--muted)" title="Edit the JD/application URL — point it at the apply page to fetch the real screening questions" onclick="editJobUrl()">✎</a></span>`);
   document.getElementById("rwMeta").innerHTML = chips.join("") + `<span id="liveBadge"></span>`;
-  document.getElementById("rwActions").innerHTML = `
-    <button class="btn ghost" id="bmBtn" onclick="toggleBookmarkReview()">${job.bookmarked ? "★ Bookmarked" : "☆ Bookmark"}</button>
-    <button class="btn ghost" onclick="findPeople()" title="Shortlist people to contact on LinkedIn at this company">🔗 People</button>
+  // Once a role is applied, swap the triage actions (Skip / Approve) for outcome
+  // actions: log an interview invite or a rejection, or revert to plain "applied".
+  const triageActions = `
     <span class="splitbtn" id="skipSplit">
       <button class="btn danger main" onclick="skipPlain()">Skip</button>
       <button class="btn danger caret" onclick="toggleSkipMenu(event)" title="More skip options">▾</button>
@@ -509,6 +592,14 @@ async function openReview(id) {
       </div>
     </span>
     <button class="btn ok" onclick="setStatus('applied')">Approve &amp; mark applied</button>`;
+  const outcomeActions = `
+    <button class="btn ${job.status === "interview" ? "ok" : "ghost"}" onclick="setStatus('interview')" title="You were invited to interview">📨 Interview${job.status === "interview" ? " ✓" : ""}</button>
+    <button class="btn ${job.status === "rejected" ? "danger" : "ghost"}" onclick="setStatus('rejected')" title="This application was rejected">✕ Rejected${job.status === "rejected" ? " ✓" : ""}</button>
+    <button class="btn ghost" onclick="setStatus('applied')" title="Clear the outcome — back to plain “applied”">↩ Applied</button>`;
+  document.getElementById("rwActions").innerHTML = `
+    <button class="btn ghost" id="bmBtn" onclick="toggleBookmarkReview()">${job.bookmarked ? "★ Bookmarked" : "☆ Bookmark"}</button>
+    <button class="btn ghost" onclick="findPeople()" title="Shortlist people to contact on LinkedIn at this company">🔗 People</button>
+    ${APPLIED_LIKE.includes(job.status) ? outcomeActions : triageActions}`;
   let warns = "";
   if (job.language_block)
     warns += `<div class="banner red"><span>🚫 <strong>Language gate:</strong> ${esc(job.language_note)}. Score capped — you'd likely be filtered out. Skip unless the requirement is flexible.</span></div>`;
@@ -597,12 +688,90 @@ function jdPanelHtml(jd) {
   const body = (jd.requirements || []).length
     ? group("✅ You match", by.match) + group("🟡 Partial / a stretch", by.stretch) + group("🔴 Gap / not met", by.mismatch)
     : '<div class="muted" style="margin-top:6px">No specific requirements could be extracted from the available JD text.</div>';
+  // "Strengthen your match" — a distinct, collapsible card below the requirements.
+  // Expands on click and lazily maps each match/stretch requirement to a CV-grounded
+  // draft point the user accepts or rewrites; rebuild then weaves it into the CV + CL.
+  const hasStrong = (by.stretch.length + by.match.length) > 0;
+  const strengthen = hasStrong ? `
+    <div class="strengthen-card" style="margin-top:18px;border:1px solid var(--accent);border-radius:10px;overflow:hidden">
+      <div onclick="toggleStrengthen()" style="cursor:pointer;padding:11px 14px;display:flex;align-items:center;gap:8px;background:rgba(99,102,241,.07)">
+        <strong style="font-size:13.5px">💪 Strengthen your match</strong>
+        <span class="muted" style="font-size:11.5px">— review the CV point we mapped to each requirement; accept or rewrite</span>
+        <span style="flex:1"></span>
+        <span id="strengthenCaret" style="color:var(--accent);font-weight:700">▸</span>
+      </div>
+      <div id="strengthenBody" class="hide" style="padding:2px 14px 14px"></div>
+    </div>` : "";
   return `<div class="panel p">
     <div class="anh" style="display:flex;align-items:center;gap:8px">JD requirements vs your fit <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0">— pulled from the job description</span>
       <span style="flex:1"></span>
       <button class="btn ghost sm" onclick="loadJd()" title="Re-fetch the JD and re-score its requirements against your CV + strengths">↻ Re-score</button></div>
-    ${warn}${body}
+    ${warn}${body}${strengthen}
   </div>`;
+}
+// Expand the Strengthen card; first open lazily fetches the CV->requirement mappings.
+async function toggleStrengthen() {
+  const body = document.getElementById("strengthenBody"), caret = document.getElementById("strengthenCaret");
+  if (!body) return;
+  const opening = body.classList.contains("hide");
+  body.classList.toggle("hide");
+  if (caret) caret.textContent = opening ? "▾" : "▸";
+  if (opening && !body.dataset.loaded) {
+    body.innerHTML = '<div class="hint" style="padding:10px 0"><span class="spin"></span> Mapping your CV to each requirement…</div>';
+    try {
+      const r = await api(`/api/jobs/${currentJob.id}/strengthen`, { method: "POST" });
+      body.dataset.loaded = "1";
+      body.innerHTML = renderStrengthenRows(r.requirements || [], r.employers || []);
+    } catch (e) {
+      body.innerHTML = `<div class="hint" style="color:var(--red);padding:8px 0">Couldn't generate suggestions: ${esc(e.message)}</div>`;
+    }
+  }
+}
+function renderStrengthenRows(reqs, employers) {
+  if (!reqs.length) return '<div class="muted" style="padding:8px 0">No match/stretch requirements to strengthen.</div>';
+  const emps = employers || [];
+  const empOptions = (sel) => {
+    const inList = emps.some(e => e.toLowerCase() === (sel || "").toLowerCase());
+    return emps.map(e => `<option ${e.toLowerCase() === (sel || "").toLowerCase() ? "selected" : ""}>${esc(e)}</option>`).join("")
+      + (sel && !inList ? `<option selected>${esc(sel)}</option>` : "")
+      + '<option value="">—</option>';
+  };
+  const rows = reqs.map(r => `
+    <div class="ev-row" data-quote="${esc(r.quote)}" style="border-top:1px solid var(--line);padding:11px 0">
+      <div style="font-size:12px;margin-bottom:5px"><mark class="req-${r.level}">${esc(r.quote)}</mark>${r.quantified ? ' <span title="quantified" style="font-size:9.5px;background:rgba(34,197,94,.15);color:#16a34a;padding:1px 6px;border-radius:8px">#</span>' : ""}</div>
+      <textarea class="ev-input" rows="2" style="width:100%;border:1px solid var(--line);border-radius:7px;padding:6px 9px;font:inherit;font-size:12.5px">${esc(r.evidence || r.draft_point || "")}</textarea>
+      <div style="display:flex;align-items:center;gap:16px;margin-top:5px;flex-wrap:wrap">
+        <label class="muted" style="font-size:11px">CV experience:
+          <select class="ev-emp" style="font:inherit;font-size:11px;border:1px solid var(--line);border-radius:6px;padding:2px 5px;margin-left:3px">${empOptions(r.employer)}</select></label>
+        <label style="font-size:11.5px;cursor:pointer;user-select:none"><input type="checkbox" class="ev-cl" ${r.include_cl ? "checked" : ""}> include in cover letter</label>
+      </div>
+    </div>`).join("");
+  return `<div style="display:flex;align-items:center;gap:8px;margin:6px 0 2px">
+      <span class="hint" style="flex:1;font-size:11px">Each requirement maps to a CV bullet under its experience. Edit a bullet, re-assign the CV role, tick which go in the cover letter (strongest pre-selected). <strong>#</strong> = quantified.</span>
+      <span class="muted" style="font-size:11px">Cover letter:</span>
+      <button class="btn ghost sm" onclick="toggleAllCl(true)">all</button>
+      <button class="btn ghost sm" onclick="toggleAllCl(false)">none</button>
+    </div>
+    ${rows}
+    <button class="btn sm" style="margin-top:12px" onclick="rebuildWithEvidence()">↻ Rebuild pack with these</button>`;
+}
+function toggleAllCl(on) {
+  document.querySelectorAll("#d-jd .ev-cl").forEach(cb => { cb.checked = on; });
+}
+// Collect the edited bullets + CV-role assignment + cover-letter choices, then rebuild.
+function rebuildWithEvidence() {
+  const ev = {}, cl = {}, emp = {};
+  document.querySelectorAll("#d-jd .ev-row").forEach(row => {
+    const q = row.dataset.quote;
+    const ta = row.querySelector(".ev-input"); const v = ta ? ta.value.trim() : "";
+    if (v) ev[q] = v;
+    const cb = row.querySelector(".ev-cl"); cl[q] = cb ? cb.checked : false;
+    const se = row.querySelector(".ev-emp"); if (se) emp[q] = se.value;
+  });
+  currentJob.req_evidence = ev;
+  currentJob.req_cl = cl;
+  currentJob._reqEmployer = emp;
+  buildPack((currentJob._cvUsed && currentJob._cvUsed.id) || "");
 }
 // Render the current JD state into the in-pack tab, if it's mounted.
 function renderJdInto(jd) {
@@ -777,6 +946,8 @@ function researchPanelHtml(job) {
     <textarea class="ta" id="dcFit" placeholder="e.g. ship-fast, low-process, founder-led; remote-first async" style="height:70px">${esc(c.cultural_fit||"")}</textarea>
     ${lab("Emphasis", "JD themes to accentuate &amp; tie hardest to your experience (steers the CV)")}
     <textarea class="ta" id="dcEmph" placeholder="e.g. lean into their enterprise voice-AI roadmap and the 0→1 founding mandate" style="height:80px">${esc(c.emphasis||"")}</textarea>
+    ${lab("Add more context", "notes, achievements or links (URLs are fetched &amp; read) — personalises the cover letter &amp; answers, then Rebuild")}
+    <textarea class="ta" id="extraCtx" placeholder="e.g. a relevant project you built, a connection at the company, or why this role now…" style="height:80px">${esc((job._draftCtx && job._draftCtx.extra_context) || job._extraContext || "")}</textarea>
     ${lab("Cover-letter opener", "")}
     <select id="dcOpener" style="border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px">
       <option value="auto" ${o("auto")}>Auto (by job flags)</option>
@@ -786,14 +957,36 @@ function researchPanelHtml(job) {
   </div>`;
 }
 
+// Board/ATS-specific optimisation panel: how this board screens + what to focus on.
+function boardTipHtml(job) {
+  const b = job._board;
+  if (!b) return "";
+  const focus = (b.focus || []).map(f => `<li>${esc(f)}</li>`).join("");
+  return `<div class="board-tip">
+    <div class="bt-head">🎯 Optimised for <strong>${esc(b.board)}</strong>${b.specific ? "" : " <span class='hint'>(no recognised ATS — generic rules)</span>"}</div>
+    <div class="bt-mech">${esc(b.mechanics)}</div>
+    <div class="bt-sees"><strong>Screener sees:</strong> ${esc(b.screener_sees)}</div>
+    <div class="bt-focus"><strong>Focus:</strong><ul>${focus}</ul></div>
+  </div>`;
+}
 function renderDraftArea(job) {
   const area = document.getElementById("draftArea");
   if (!job.draft) {
-    // Pre-build: just the CTA + what it does. The research framing is NOT shown
-    // here — it's filled during the build and lives in the pack's Research tab.
+    // Pre-build: just the CTA + what it does. No ATS/board tip here — the ATS is
+    // detected as part of the build (after the apply page is reached), so its
+    // optimisation panel only appears with the finished pack. The research framing
+    // is likewise filled during the build and lives in the pack's Research tab.
+    const xc = (job._draftCtx && job._draftCtx.extra_context) || job._extraContext || "";
     area.innerHTML =
       `<div class="panel p" style="text-align:center">
-        <div class="hint" style="text-align:left;margin-bottom:16px">Builds the full application pack in one go: assess the JD, fetch the screening questions, research the company, then draft a tailored CV, cover letter and screening answers. You review and edit everything afterwards — including the research framing, in the Research tab.</div>
+        <div class="hint" style="text-align:left;margin-bottom:16px">Builds the full application pack in one go: assess the JD, reach the apply page to fetch the screening questions and detect which ATS it's on, research the company, then draft a CV, cover letter and screening answers tuned to that ATS. You review and edit everything afterwards — including the research framing, in the Research tab.</div>
+        <details class="ctx-add" style="text-align:left;margin-bottom:14px"${xc ? " open" : ""}>
+          <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--accent)">+ Add context <span class="muted" style="font-weight:400">(optional)</span></summary>
+          <div style="margin-top:8px">
+            <textarea id="extraCtx" rows="4" placeholder="Paste notes, achievements, or links — e.g. a relevant project you built, a connection at the company, or why this role now. Any URLs you drop in get fetched and read." style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit">${esc(xc)}</textarea>
+            <div class="hint" style="margin-top:4px">Personalises your <strong>cover letter</strong> &amp; <strong>screening answers</strong> (and which real CV experience to foreground — it never invents CV facts). Supported: text &amp; links now; <em>images / PDF coming soon</em>.</div>
+          </div>
+        </details>
         <button class="btn" id="genBtn" onclick="buildPack()">🧩 Build Application Pack</button>
       </div>`;
     return;
@@ -811,6 +1004,7 @@ function renderDraftArea(job) {
     : `<span class="hint">tailored from <strong>${esc(used.name)}</strong></span>`;
   area.innerHTML = `
     ${errBar}
+    ${boardTipHtml(job)}
     <div class="doctabs">
       <button class="dtab" onclick="dtab(event,'d-research')">🔎 Research</button>
       <button class="dtab" onclick="dtab(event,'d-jd')">📋 JD fit</button>
@@ -823,6 +1017,7 @@ function renderDraftArea(job) {
     </div>
     <div class="docactions">
       <button class="btn ghost sm" id="editToggle" onclick="toggleEdit()">✎ Edit</button>
+      <button class="btn ghost sm" id="copyDocBtn" onclick="copyActiveDoc(this)" title="Copy this document as clean plain text (paragraphs intact) for pasting into an application form">📋 Copy</button>
       <button class="btn ghost sm" onclick="acceptAllEdits()" title="Accept all remaining AI changes in the current document (keeps the AI version; leaves orange placeholders for you)">✓ Accept all edits</button>
       <button class="btn ghost sm" data-doc="d-cl" onclick="openPasteCL()" title="Paste your revised cover letter; the app infers why each change was made and learns from it">↑ Paste revised CL</button>
       <button class="btn ghost sm" data-doc="d-sq" onclick="openScreeningQs()" title="Paste the application's screening questions (any ATS) to generate answers">↑ Screening Qs</button>
@@ -916,6 +1111,27 @@ function copyScreeningAnswer(btn) {
     const old = btn.innerHTML;
     btn.classList.add("copied"); btn.innerHTML = "✓";
     setTimeout(() => { btn.innerHTML = old; btn.classList.remove("copied"); }, 1200);
+  }).catch(() => {});
+}
+
+// Serialize a rendered document to CLEAN plain text: each block (<p>/<li>/…) is one
+// paragraph, intra-paragraph soft-wrap whitespace collapsed, real <br> breaks kept,
+// paragraphs separated by a single blank line. Pastes intact into application forms.
+function docToCleanText(el) {
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll("button, .menu, .sq-copy").forEach(n => n.remove());  // drop UI chrome
+  const blocks = clone.querySelectorAll("p, li, h1, h2, h3, h4, blockquote");
+  const src = blocks.length ? [...blocks] : [clone];
+  return src.map(b => (b.innerText || "").replace(/[ \t]+/g, " ").replace(/ *\n */g, "\n").trim())
+    .filter(Boolean).join("\n\n");
+}
+function copyActiveDoc(btn) {
+  const doc = activeDoc();
+  if (!doc) return;
+  navigator.clipboard.writeText(docToCleanText(doc)).then(() => {
+    const old = btn.textContent;
+    btn.textContent = "✓ Copied"; btn.classList.add("copied");
+    setTimeout(() => { btn.textContent = old; btn.classList.remove("copied"); }, 1300);
   }).catch(() => {});
 }
 
@@ -1013,7 +1229,7 @@ function docMeta(id) {
 }
 // Which draft tab is showing, + a label/filename for it.
 function activeDocInfo() { return docMeta((activeDoc() || {}).id || "d-cv"); }
-// Export filename: <DocType>_<Name>_<Role>  e.g. CV_Dmitry_Meltsov_Product_Manager
+// Export filename: <DocType>_<Name>_<Role>  e.g. CV_Jane_Doe_Product_Manager
 function _slug(s) { return (s || "").trim().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, ""); }
 function candidateName() {
   const h = document.querySelector("#d-cv h3");
@@ -1197,6 +1413,9 @@ async function fetchQuestions() {
   const r = await api(`/api/jobs/${currentJob.id}/questions`, { method: "POST" });
   currentJob.questions = (r.questions || []).map(t => ({ text: t }));
   currentJob._questionsFetched = r.count || 0;
+  // this call reaches the real apply page, so it's where we learn the ATS — keep
+  // the board tip so the pack can be optimised (and shown) for it.
+  if (r.board) currentJob._board = r.board;
   return r;
 }
 
@@ -1213,16 +1432,19 @@ async function buildPack(cvId) {
       cultural_fit: val("dcFit"), emphasis: val("dcEmph") };
     const op = val("dcOpener"); if (op) currentJob._opener = op;
   }
+  // capture optional extra context BEFORE the DOM is replaced by the spinner
+  const xcEl = document.getElementById("extraCtx");
+  if (xcEl) currentJob._extraContext = xcEl.value.trim();
   const area = document.getElementById("draftArea");
   if (area) area.innerHTML = '<div class="panel p"><span class="spin"></span>Building your pack — assessing the JD, fetching the application questions, researching, then drafting the CV, cover letter &amp; answers… (~30s).</div>';
   // 2. JD fit — real gaps + role-fit feed the research and the draft
   if (!(currentJob.jd && currentJob.jd.requirements)) {
     try { await loadJd(true); } catch (e) { /* continue even if JD assessment fails */ }
   }
-  // 3. screening questions — fetched early so they shape research, CV and CL too
-  if (!(currentJob.questions && currentJob.questions.length)) {
-    try { await fetchQuestions(); } catch (e) { /* continue even if none fetchable */ }
-  }
+  // 3. ALWAYS resolve the real apply page, detect its ATS, and fetch the live
+  //    questions — reaching past an aggregator post (e.g. Adzuna) to the linked JD,
+  //    so the pack is optimised for the real board (Greenhouse/Lever/Ashby).
+  try { await fetchQuestions(); } catch (e) { /* continue even if none fetchable */ }
   // 4. research the framing (only fills blanks; respects anything the user typed)
   const c = currentJob._draftCtx || {};
   if (!(c.angle && c.angle.trim())) {
@@ -1247,6 +1469,10 @@ async function generateDraft(cvId) {
         cv_id: cvId || "",
         opener: (currentJob._opener && currentJob._opener !== "auto") ? currentJob._opener : "",
         ...(currentJob._draftCtx || {}),
+        extra_context: currentJob._extraContext || "",
+        req_evidence: currentJob.req_evidence || {},
+        req_cl: currentJob.req_cl || {},
+        req_employer: currentJob._reqEmployer || {},
         hooks: (currentJob._research && currentJob._research.hooks) || [],
       }),
     });
@@ -1295,11 +1521,15 @@ async function toggleBookmarkReview() {
 async function setStatus(status, reason, anchor) {
   if (!currentJob) return;
   if (status === "skipped" && reason === undefined) { openTrainModal(); return; }
+  const wasApplied = APPLIED_LIKE.includes(currentJob.status);
   await api(`/api/jobs/${currentJob.id}/status`, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status, reason: reason || "", anchor: anchor || "" }),
   });
-  if (status === "applied") { showLearningRecap(currentJob.id); return; }   // modal navigates on close
+  currentJob.status = status;
+  // Learning recap fires only on the FIRST submit (review → applied), not when
+  // logging a later outcome (interview/rejected) or reverting to "applied".
+  if (status === "applied" && !wasApplied) { showLearningRecap(currentJob.id); return; }   // modal navigates on close
   go("jobs");
   loadJobs();                        // refresh so the job moves to its tab + counts update
 }
@@ -1318,37 +1548,44 @@ async function showLearningRecap(jobId) {
   try { d = await api(`/api/jobs/${jobId}/learning-recap`, { method: "POST" }); }
   catch (e) { const b = document.getElementById("recapBody"); if (b) b.innerHTML = `<div class="hint">Marked applied. (Couldn't load the learning recap: ${esc(e.message)})</div>`; return; }
   const sub = "font-weight:400;text-transform:none;letter-spacing:0";
-  // 1) What THIS submission taught (the edits captured on this specific application).
-  const edits = d.count
-    ? `<div class="anh">From this application <span class="muted" style="${sub}">— ${d.count} edit(s) captured</span></div>
-       ${d.entries.map(e => `<div class="opt" style="cursor:default;margin-bottom:8px">
-          ${e.changed ? `<div class="txt"><span class="del">${esc(e.suggested)}</span> <span class="ins">${esc(e.changed)}</span></div>` : ""}
-          <div class="rat" style="margin:8px 0 0">Why: ${esc(e.reason || "(no reason given)")}</div></div>`).join("")}`
-    : `<div class="hint" style="margin-bottom:6px">No edits were captured from this application — you accepted the draft as-is.</div>`;
-  // 2) How it impacted GLOBAL settings — the delta, not the whole rule set. If
-  //    nothing changed globally, say so explicitly.
+  // 1) LEAD with a plain-language summary of what was actually learned.
+  let summary;
+  if (d.count) {
+    summary = `<div class="anh">What Caddie learned</div>
+      <div style="font-size:13.5px;line-height:1.6;margin:5px 0 2px">${d.summary ? esc(d.summary) : `Captured ${d.count} edit(s) from your review of this application.`}</div>`;
+  } else {
+    summary = `<div class="anh">What Caddie learned</div>
+      <div class="hint" style="margin-top:5px">Nothing new — you applied the draft as-is, so there was nothing to learn from this one.</div>`;
+  }
+  // 2) The concrete IMPACT on the pipeline's instructions (the distilled rules delta).
+  //    Only show a diff as "new rules" when it's small/incremental; a large diff is
+  //    just a full re-distillation reword, not N new rules from one submission.
   const newRules = (d.new_rules || []).filter(Boolean);
-  // Only treat the diff as genuinely-new rules when it's a small, incremental
-  // change. A large diff means the whole rule set was re-distilled (reworded),
-  // which is noise — not N brand-new rules from one submission.
   const genuinelyNew = newRules.length > 0 && newRules.length <= Math.max(2, d.count);
-  let global;
+  let impact;
   if (genuinelyNew) {
-    global = `<div class="anh" style="margin-top:14px">↳ New global drafting rule(s) <span class="muted" style="${sub}">— now applied to every future draft</span></div>
+    impact = `<div class="anh" style="margin-top:14px">Impact on the pipeline <span class="muted" style="${sub}">— new drafting rule(s), applied to every future draft</span></div>
        <ul style="margin:6px 0 0;padding-left:18px;font-size:12.5px;line-height:1.55">${newRules.map(r => `<li style="margin:3px 0">${esc(r)}</li>`).join("")}</ul>`;
   } else if (d.count) {
-    global = `<div class="hint" style="margin-top:14px">✓ Folded into your global drafting rules &amp; style examples — applied to every future draft. No brand-new rule was needed; open <strong>Drafting rules</strong> below to see the current set.</div>`;
+    impact = `<div class="anh" style="margin-top:14px">Impact on the pipeline</div>
+       <div class="hint" style="margin-top:4px">✓ Folded into your existing drafting rules &amp; style examples — applied to every future draft. No brand-new rule was needed; open <strong>Drafting rules</strong> below for the current set.</div>`;
   } else {
-    global = `<div class="hint" style="margin-top:14px">Nothing was inferred at the global level — your drafting rules and scoring anchors are unchanged.</div>`;
+    impact = `<div class="anh" style="margin-top:14px">Impact on the pipeline</div>
+       <div class="hint" style="margin-top:4px">None — your drafting rules and scoring anchors are unchanged.</div>`;
   }
-  // 3) The guiding files that steer drafting + scoring, as links to open if needed.
+  // 3) Raw per-edit training data is NOT recited here — link out for deeper review.
+  const raw = d.count
+    ? `<div class="hint" style="margin-top:14px">Raw training data for this application — ${d.count} case(s) of <em>AI draft → your change → reason</em> — is in your <a href="/api/guiding/edits" target="_blank" rel="noopener"><strong>Edit log ↗</strong></a>.</div>`
+    : "";
+  // 4) The guiding files that steer drafting + scoring.
   const guiding = `<div class="anh" style="margin-top:16px">Guiding files <span class="muted" style="${sub}">— open any to review what steers your drafts &amp; scoring</span></div>
      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
        ${GUIDING_LINKS.map(g => `<a class="btn sm ghost" href="/api/guiding/${g.k}" target="_blank" rel="noopener" title="${esc(g.t)}">${esc(g.label)} ↗</a>`).join("")}
      </div>`;
-  document.getElementById("recapBody").innerHTML = edits + global + guiding;
+  document.getElementById("recapBody").innerHTML = summary + impact + raw + guiding;
 }
 const GUIDING_LINKS = [
+  { k: "pinned", label: "Pinned rules", t: "Your authoritative directives — followed first, never auto-overwritten" },
   { k: "rules", label: "Drafting rules", t: "Distilled guidelines + guardrails applied to every draft" },
   { k: "edits", label: "Edit log", t: "Your raw accepted edits with reasons — the rules are distilled from these" },
   { k: "strengths", label: "Strengths", t: "Treated as met in scoring/JD-fit; surfaced in drafts" },
@@ -1931,6 +2168,31 @@ async function loadSettings() {
   renderFilters(prof.filters || {});
   loadRoleQueries();
   loadStyle();
+  loadDoctrines();
+}
+async function loadDoctrines() {
+  const box = document.getElementById("doctrineBox");
+  if (!box) return;
+  try {
+    const d = await api("/api/doctrines");
+    box.innerHTML = (d.doctrines || []).map(doctrineCard).join("");
+  } catch (e) { box.innerHTML = `<div class="hint" style="color:var(--red)">Couldn't load: ${esc(e.message)}</div>`; }
+}
+function doctrineCard(dt) {
+  return `<details style="margin:8px 0;border:1px solid var(--line);border-radius:10px;padding:8px 12px">
+    <summary style="cursor:pointer;font-weight:600">${esc(dt.label)} doctrine</summary>
+    <textarea id="doc-${esc(dt.key)}" class="ta" style="height:320px;font-family:ui-monospace,monospace;font-size:11.5px;margin-top:8px">${esc(dt.text)}</textarea>
+    <div style="margin-top:8px"><button class="btn sm" onclick="saveDoctrine('${esc(dt.key)}', this)">Save ${esc(dt.label)} doctrine</button> <span class="hint" id="docMsg-${esc(dt.key)}"></span></div>
+  </details>`;
+}
+async function saveDoctrine(key, btn) {
+  const ta = document.getElementById("doc-" + key), msg = document.getElementById("docMsg-" + key);
+  if (!ta) return;
+  if (msg) msg.innerHTML = '<span class="spin"></span>saving…';
+  try {
+    await api(`/api/doctrines/${key}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: ta.value }) });
+    if (msg) msg.innerHTML = '<span class="ok-tag">✓ saved — applies to the next draft</span>';
+  } catch (e) { if (msg) msg.textContent = "✗ " + e.message; }
 }
 let _stylePreamble = "", _styleEntries = [];
 async function loadStyle() {
@@ -2017,6 +2279,7 @@ const US_GEO = ["remote-us", "remote-americas", "onsite-us"];
 function renderFilters(f) {
   const geo = f.geo_gate || [];
   const spoken = (f.spoken || []).join(", ");
+  const boost = (f.boost || []).join(", ");
   const geoBoxes = GEO_OPTS.map(([k, lbl]) =>
     `<label style="display:block;font-size:13px;margin:3px 0"><input type="checkbox" class="geo-opt" value="${k}" ${geo.includes(k) ? "checked" : ""}> ${esc(lbl)}</label>`).join("");
   document.getElementById("filtersBox").innerHTML = `
@@ -2029,10 +2292,43 @@ function renderFilters(f) {
       <div>
         <label style="font-size:12px;display:block">Spoken languages <span class="muted">(comma-separated; gates roles needing others)</span><br>
           <input id="spokenLangs" value="${esc(spoken)}" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin-top:4px"></label>
+        <label style="font-size:12px;display:block;margin-top:10px">Boost languages <span class="muted">(comma-separated; bumps the score when a role wants one, e.g. Russian)</span><br>
+          <input id="boostLangs" value="${esc(boost)}" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin-top:4px"></label>
         <label style="font-size:12px;display:block;margin-top:10px">Recency window (days)<br>
           <input id="recencyDays" type="number" min="1" max="90" value="${f.recency_days || 7}" style="width:120px;border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin-top:4px"></label>
+        <label style="font-size:12px;display:block;margin-top:10px">Full-JD fetch threshold <span class="muted">(after a scan, fetch the full JD for roles scoring ≥ this on AI or WT — applies geo/language gates upfront)</span><br>
+          <input id="jdThreshold" type="number" min="0" max="100" value="${f.jd_fetch_threshold ?? 70}" style="width:120px;border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin-top:4px"></label>
       </div>
+    </div>
+    <div style="margin-top:20px;max-width:760px">
+      <div class="opt-lab" style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted);margin-bottom:2px">Shortlist categories <span class="muted" style="font-weight:400;text-transform:none">— the dropdown above the jobs list</span></div>
+      <div class="hint" style="margin-bottom:6px">match: <strong>bookmarked</strong> = your ★ pins · <strong>flags</strong> = auto-tags (eir, zero_to_one, founder_welcome, voice_ai, web3) · <strong>keywords</strong> = role/company text contains any.</div>
+      <div id="slRows">${(f.shortlists || []).map(shortlistRowHtml).join("")}</div>
+      <button class="btn ghost sm" onclick="addShortlistRow()" style="margin-top:6px">+ Add shortlist</button>
     </div>`;
+}
+function shortlistRowHtml(s) {
+  s = s || { match: "keywords" };
+  const vals = (s.match === "flags" ? (s.flags || []) : (s.keywords || [])).join(", ");
+  const opt = (v) => `<option value="${v}" ${s.match === v ? "selected" : ""}>${v}</option>`;
+  return `<div class="sl-row" style="display:flex;gap:6px;align-items:center;margin:5px 0">
+    <input class="sl-icon" value="${esc(s.icon || "")}" placeholder="★" maxlength="3" style="width:40px;text-align:center;border:1px solid var(--line);border-radius:6px;padding:5px">
+    <input class="sl-label" value="${esc(s.label || "")}" placeholder="Label" style="flex:0 0 150px;border:1px solid var(--line);border-radius:6px;padding:5px 8px">
+    <select class="sl-match" onchange="this.closest('.sl-row').querySelector('.sl-vals').disabled = this.value==='bookmarked'" style="border:1px solid var(--line);border-radius:6px;padding:5px">${opt("flags")}${opt("keywords")}${opt("bookmarked")}</select>
+    <input class="sl-vals" value="${esc(vals)}" ${s.match === "bookmarked" ? "disabled" : ""} placeholder="comma-separated flags or keywords" style="flex:1;border:1px solid var(--line);border-radius:6px;padding:5px 8px">
+    <button class="btn ghost sm" onclick="this.closest('.sl-row').remove()" title="Remove">×</button>
+  </div>`;
+}
+function addShortlistRow() { document.getElementById("slRows").insertAdjacentHTML("beforeend", shortlistRowHtml({ match: "keywords" })); }
+function collectShortlists() {
+  return [...document.querySelectorAll("#slRows .sl-row")].map(r => {
+    const label = r.querySelector(".sl-label").value.trim();
+    const match = r.querySelector(".sl-match").value;
+    const vals = r.querySelector(".sl-vals").value.split(",").map(s => s.trim()).filter(Boolean);
+    const o = { id: label.toLowerCase().replace(/\s+/g, "-"), label, icon: r.querySelector(".sl-icon").value.trim(), match };
+    if (match === "flags") o.flags = vals; else if (match === "keywords") o.keywords = vals;
+    return o;
+  }).filter(s => s.label);
 }
 async function saveFilters() {
   const geo = [...document.querySelectorAll(".geo-opt:checked")].map(c => c.value);
@@ -2042,10 +2338,14 @@ async function saveFilters() {
     exclude_us_onsite_hybrid: !geo.some(g => US_GEO.includes(g)),
     recency_days: parseInt(document.getElementById("recencyDays").value || "7", 10),
     spoken: document.getElementById("spokenLangs").value.split(",").map(s => s.trim()).filter(Boolean),
+    boost: document.getElementById("boostLangs").value.split(",").map(s => s.trim()).filter(Boolean),
+    jd_fetch_threshold: parseInt(document.getElementById("jdThreshold").value || "70", 10),
+    shortlists: collectShortlists(),
   };
   const msg = document.getElementById("filtersMsg");
   try {
     await api("/api/profile/filters", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    await loadShortlists();          // refresh the jobs-list dropdown with the new categories
     msg.innerHTML = '<span class="ok-tag">✓ saved — applies to future scans</span>';
   } catch (e) { msg.textContent = "✗ " + e.message; }
 }
@@ -2238,7 +2538,21 @@ function fetchPanel(b) {
       <button class="btn ok" onclick="boardImport('${id}')">Import new to Jobs</button>
       <span id="msg-${id}" class="hint" style="margin-left:8px"></span>
     </div>
-    <details style="margin-top:10px"><summary>Direct URL</summary>
+    <details style="margin-top:10px"${b.custom ? " open" : ""}><summary>Fetch URL${b.custom ? " — editable" : ""}</summary>
+      ${b.custom ? `<div style="margin-top:8px">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <input id="urlin-${id}" value="${esc(b.url || "")}" style="${inp};flex:1;min-width:240px" placeholder="https://…">
+          <select id="urltier-${id}" style="${inp};width:auto" title="How to fetch this URL">
+            <option value="">Auto-detect</option>
+            <option value="listing">Listing (static)</option>
+            <option value="browser">Browser (render JS)</option>
+            <option value="ats">ATS</option>
+          </select>
+          <button class="btn sm" onclick="saveBoardUrl('${id}')">Save URL</button>
+          <span id="urlmsg-${id}" class="hint"></span>
+        </div>
+        <div class="hint" style="margin-top:6px">Changing the URL re-detects the fetch tier. For JS-rendered sites (SPAs), pick <strong>Browser</strong>.</div>
+      </div>` : ""}
       <div id="url-${id}" class="hint" style="word-break:break-all;margin-top:8px">Run a preview to see the exact fetch URL.</div></details>
     <div id="res-${id}" style="margin-top:12px"></div>
   </div>`;
@@ -2277,6 +2591,21 @@ async function saveBoardSettings(id) {
     });
     msg.innerHTML = '<span class="ok-tag">✓ depth saved</span>';
   } catch (e) { msg.textContent = "✗ " + e.message; }
+}
+async function saveBoardUrl(id) {
+  const v = (document.getElementById("urlin-" + id) || {}).value || "";
+  const tier = (document.getElementById("urltier-" + id) || {}).value || "";
+  const msg = document.getElementById("urlmsg-" + id);
+  if (!v.trim()) { if (msg) msg.textContent = "enter a URL"; return; }
+  if (msg) msg.innerHTML = '<span class="spin"></span>checking…';
+  try {
+    const { board } = await api(`/api/boards/${id}/url`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: v.trim(), tier }),
+    });
+    if (msg) msg.innerHTML = `<span class="ok-tag">✓ saved — tier: ${esc(board.tier)}</span>`;
+    loadBoards();
+  } catch (e) { if (msg) msg.textContent = "✗ " + e.message; }
 }
 function boardPost(id, action) {
   return api(`/api/boards/${id}/${action}`, {
@@ -2392,4 +2721,5 @@ async function saveScoring() {
 }
 
 // ---- boot ----------------------------------------------------------------
+loadShortlists();  // config-driven shortlist dropdown (founder / voice / bookmarked / custom)
 routeFromHash();   // honour a deep link in the URL on load; defaults to the jobs list

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>caddie-ai</title>
+<title>Job Applicator</title>
 <style>
   :root{
     --bg:#f6f7f9; --panel:#fff; --ink:#16191d; --muted:#6b7280; --line:#e5e7eb;
@@ -16,8 +16,8 @@
   aside{background:#0f1115;color:#cbd2dc;padding:18px 14px;position:sticky;top:0;height:100vh}
   aside h1{color:#fff;font-size:15px;margin:4px 6px 2px}
   aside .sub{color:#7c8597;font-size:11px;margin:0 6px 18px}
-  nav button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;color:#cbd2dc;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px}
-  nav button:hover{background:#1a1d24;color:#fff}
+  nav button,nav a{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;color:#cbd2dc;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;text-decoration:none;box-sizing:border-box}
+  nav button:hover,nav a:hover{background:#1a1d24;color:#fff}
   nav button.active{background:var(--accent);color:#fff}
   nav .dot{width:7px;height:7px;border-radius:50%;background:#3a4150}
   nav button.active .dot{background:#fff}
@@ -63,6 +63,7 @@
   .st-review{background:#dbeafe;color:#1e40af}
   .st-approved{background:#dcfce7;color:#166534}
   .st-applied{background:#e0e7ff;color:#3730a3}
+  .st-interview{background:#cffafe;color:#155e75}
   .st-rejected{background:#fee2e2;color:#991b1b}
   .st-skipped{background:#f1f5f9;color:#475569}
   .src{display:inline-flex;flex:0 0 auto}
@@ -222,6 +223,13 @@
   .doctabs .dtab.on{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
   .docactions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
   .docactions::before{content:"This tab:";font-size:11px;color:var(--muted);margin-right:2px;align-self:center}
+  /* board/ATS optimisation panel in the review pack */
+  .board-tip{background:#f0f7ff;border:1px solid #bfdbfe;border-left:4px solid var(--accent);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12.5px}
+  .board-tip .bt-head{font-weight:600;margin-bottom:4px}
+  .board-tip .bt-mech{color:#334155;margin-bottom:4px}
+  .board-tip .bt-sees{color:#475569;margin-bottom:4px}
+  .board-tip ul{margin:4px 0 0;padding-left:18px}
+  .board-tip li{margin:2px 0;color:#1e3a5f}
 </style>
 </head>
 <body>
@@ -232,9 +240,10 @@
     <nav id="nav">
       <button data-view="jobs" class="active"><span class="dot"></span>Jobs</button>
       <button data-view="boards"><span class="dot"></span>Boards</button>
+      <a href="/cv-builder"><span class="dot"></span>CV Builder</a>
       <button data-view="settings"><span class="dot"></span>Settings</button>
     </nav>
-    <div class="foot">Loop: Discover → Assess fit → Draft application → Learn from you.</div>
+    <div class="foot">Loop: Fetch new roles → Assess fit → Draft application → Repeat.</div>
   </aside>
 
   <main>
@@ -266,17 +275,22 @@
       <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <div class="tabs2">
           <button class="on" id="tab-active" onclick="setJobView('active')">Active</button>
-          <button id="tab-founder" onclick="setJobView('founder')">⚑ Founder-fit <span id="founderCount" class="muted"></span></button>
-          <button id="tab-voice" onclick="setJobView('voice')">🎙 Voice AI <span id="voiceCount" class="muted"></span></button>
-          <button id="tab-bookmarked" onclick="setJobView('bookmarked')">★ Bookmarked <span id="bookmarkedCount" class="muted"></span></button>
+          <span class="splitbtn" id="shortlistSplit">
+            <button class="main" id="shortlistMain" onclick="setJobView(currentShortlist)" title="Show this shortlist" style="border-top-right-radius:0;border-bottom-right-radius:0">★ Bookmarked</button>
+            <button class="caret" onclick="toggleShortlistMenu(event)" title="Choose a shortlist" style="border-left:1px solid var(--line);border-top-left-radius:0;border-bottom-left-radius:0;padding:6px 9px">▾</button>
+            <div class="menu" id="shortlistMenu" style="left:0;right:auto;min-width:210px"></div>
+          </span>
           <select id="statusSel" class="statussel" onchange="setJobView(this.value)" title="View applied, skipped or archived roles">
             <option value="">Status…</option>
             <option value="applied" id="opt-applied">Applied</option>
+            <option value="interview" id="opt-interview">Interview</option>
+            <option value="rejected" id="opt-rejected">Rejected</option>
             <option value="skipped" id="opt-skipped">Skipped</option>
             <option value="archived" id="opt-archived">Archived</option>
           </select>
         </div>
         <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <input id="jobSearch" type="search" placeholder="🔍 Search role / company — all statuses" oninput="setSearch(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:12.5px;min-width:230px;background:#fff">
           <label style="font-size:12px;color:var(--muted)">Posted
             <select id="dateFilter" onchange="setDateFilter(this.value)" style="border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;margin-left:6px;background:#fff">
               <option value="any">Any time</option>
@@ -458,6 +472,11 @@
       <details open><summary>Filters <span class="muted" style="font-weight:400">— geo, language &amp; recency gates applied during scanning</span></summary>
         <div id="filtersBox" style="margin-top:12px"></div>
         <div style="margin-top:12px"><button class="btn sm" onclick="saveFilters()">Save filters</button> <span id="filtersMsg" class="hint"></span></div>
+      </details>
+
+      <details><summary>Drafting doctrine <span class="muted" style="font-weight:400">— the static specs that govern cover-letter &amp; CV-summary writing (editable)</span></summary>
+        <div class="hint" style="margin:8px 0">Loaded into every draft (prompt-cached) before your learned preferences, which override them on conflicts. Edit to change how the cover letter and CV summary are written.</div>
+        <div id="doctrineBox"></div>
       </details>
     </section>
   </main>

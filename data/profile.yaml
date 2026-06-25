@@ -135,3 +135,24 @@ role_queries:
   - director of product
   - vp product
   - founding product manager
+# --- Added with the timezone-gate / shortlist / JD-enrichment features ---
+timezone_gate:
+  min_utc: 0
+  max_utc: 5
+exclude_engaged_companies: false
+jd_fetch_threshold: 70
+shortlists:
+- id: bookmarked
+  label: Bookmarked
+  icon: "★"
+  match: bookmarked
+- id: founder
+  label: Founder-fit
+  icon: "⚑"
+  match: flags
+  flags: [eir, zero_to_one, founder_welcome]
+- id: voice
+  label: Voice AI
+  icon: "🎙"
+  match: flags
+  flags: [voice_ai]

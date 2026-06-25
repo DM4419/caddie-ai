@@ -1,6 +1,8 @@
 """Single-JD pipeline: URL/text -> fetch -> score -> persisted Job."""
 from __future__ import annotations
 
+import re
+
 from adapters import dedupe, url_key
 
 from . import fetch as fetch_mod
@@ -38,7 +40,8 @@ def score_raws(raws: list, profile: dict) -> list:
 def _build_job(raw: dict, result: ScoreResult, role: dict, status: str) -> Job:
     return Job(
         id=store.new_id(), date=store.today(),
-        role=raw["role"], company=raw["company"], url=raw.get("url", ""),
+        role=raw["role"], title=raw.get("title") or raw.get("role", ""),
+        company=raw["company"], url=raw.get("url", ""),
         mode=raw["mode"], location=raw.get("location", ""),
         salary=raw.get("salary", ""), posted=raw.get("posted", ""),
         description=raw["description"], status=status,
@@ -210,13 +213,29 @@ def role_assess(raw: dict, profile: dict) -> dict:
 
 
 def geo_excluded(mode: str, location: str, profile: dict, description: str = "") -> bool:
-    """Geo-exclude any US / Americas location — including US-remote and even
-    multi-region roles that merely list the US (per the user's 'no US' rule).
-    When the location field is unrevealing ('Remote'/blank), fall back to the JD
-    body so a US-listed role that hid its country still gets dropped."""
+    """Geo-exclude jobs outside the wanted region. Two modes, by profile config:
+
+    * `timezone_gate: {min_utc, max_utc}` -> keep only roles whose region falls in a
+      collaboration band (e.g. CET-1..CET+4 = UTC 0..5). A role with a known region
+      outside the band is dropped; an unrevealing 'Remote'/blank location is kept
+      unless the JD reads US/Americas-only.
+    * else legacy `exclude_us_onsite_hybrid` -> the original 'no US/Americas' rule.
+    """
+    from .textutils import (is_americas, is_far_geo, is_remote_friendly, is_us,
+                            looks_us_only, region_utc_offsets)
+
+    gate = profile.get("timezone_gate") or {}
+    if gate:
+        lo, hi = gate.get("min_utc", 0), gate.get("max_utc", 5)
+        offs = region_utc_offsets(location)
+        if offs:
+            # keep if ANY listed region is in-band (multi-region remote roles qualify)
+            return not any(lo <= o <= hi for o in offs)
+        # location names no region -> keep unless the JD is clearly US/Americas-only
+        return bool(description) and looks_us_only(description)
+
     if not profile.get("exclude_us_onsite_hybrid"):
         return False
-    from .textutils import is_americas, is_far_geo, is_remote_friendly, is_us, looks_us_only
     if is_us(location) or is_americas(location):
         return True
     # on-site/hybrid in a far region (India/MENA/APAC) is a hard no — no relocation
@@ -259,8 +278,28 @@ def add_from_paste(url: str = "", text: str = "") -> Job:
     return make_job(raw, status="review")
 
 
-def _sig(company: str, title: str) -> str:
-    return (company or "").strip().lower() + "|" + (title or "").strip().lower()
+def _norm(s: str) -> str:
+    """Collapse to alphanumerics so spelling/spacing variants match (e.g. a board's
+    slug-derived 'Streetgroup' == Adzuna's 'Street Group')."""
+    return re.sub(r"[^a-z0-9]+", "", (s or "").lower())
+
+
+def _sig(company: str, role: str) -> str:
+    return _norm(company) + "|" + _norm(role)
+
+
+# Statuses that mark a company as "already engaged" (plus archived). When
+# exclude_engaged_companies is on, the company's other active roles are kept out of
+# the active list.
+ENGAGED_STATUSES = {"skipped", "rejected", "applied", "interview", "approved",
+                    "offer", "accepted"}
+
+
+def engaged_companies(existing: list = None) -> set:
+    """Normalised company names with any engaged (or archived) role."""
+    existing = existing if existing is not None else store.list_jobs()
+    return {_norm(j.company) for j in existing
+            if j.archived or j.status in ENGAGED_STATUSES}
 
 
 def split_new(raws: list, existing: list = None) -> tuple:
@@ -269,7 +308,10 @@ def split_new(raws: list, existing: list = None) -> tuple:
     expensive LLM scoring, on both Preview and Import."""
     existing = existing if existing is not None else store.list_jobs()
     seen_urls = {url_key(j.url) for j in existing if j.url}
-    seen_sigs = {_sig(j.company, j.role) for j in existing}
+    # dedup on the specific posting title (normalised), falling back to canonical role
+    # for older jobs that predate the stored title. Company is normalised too so a
+    # board's slug-derived name ('Streetgroup') matches an aggregator's ('Street Group').
+    seen_sigs = {_sig(j.company, j.title or j.role) for j in existing}
     new, already = [], 0
     for r in raws:
         u = url_key(r.get("url", ""))
@@ -306,6 +348,14 @@ def import_raws(raws: list, since: str = None) -> tuple:
     kept, stale = drop_stale(kept, profile, since=since)
 
     fresh, skipped = split_new(kept)               # drop doubles before scoring
+
+    # keep out roles from companies the user has already engaged (skipped/applied/
+    # archived) when that rule is enabled — saves scoring them too
+    if profile.get("exclude_engaged_companies"):
+        engaged = engaged_companies()
+        before = len(fresh)
+        fresh = [r for r in fresh if _norm(r.get("company", "")) not in engaged]
+        dropped += before - len(fresh)
 
     # scoring infers a location for jobs the board left blank — re-apply the geo
     # gate now so US/Americas-only remote roles are dropped, never stored
